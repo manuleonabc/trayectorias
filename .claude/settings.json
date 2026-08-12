@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/.claude/skills/gestion-escolar/**)",
+      "Bash(node -e ' *)",
+      "WebFetch(domain:docs.google.com)",
+      "Bash(node --check src/models/Valoracion.js)",
+      "Bash(node -e \"require\\('./src/models/Valoracion'\\); console.log\\('modelo OK'\\)\")",
+      "Bash(node --check src/models/CursadaAsignatura.js)",
+      "Bash(node -e \"require\\('./src/models/CursadaAsignatura'\\); require\\('./src/models/Valoracion'\\); console.log\\('OK'\\)\")",
+      "Bash(node --check src/repos/cursadaAsignatura.repo.js)",
+      "Bash(node --check src/repos/valoracion.repo.js)",
+      "Bash(node -e \"require\\('./src/repos/valoracion.repo'\\); console.log\\('OK'\\)\")",
+      "Bash(node --check src/controllers/valoracion.controller.js)",
+      "Bash(node -e \"require\\('./src/controllers/valoracion.controller'\\); console.log\\('OK'\\)\")",
+      "Bash(node --check src/routes/valoracion.router.js)",
+      "Bash(node -e \"require\\('./src/app'\\); console.log\\('app OK'\\)\")",
+      "Bash(grep -n \"Repo + pantallas de \\\\`Valoracion\\\\`\" .claude/skills/gestion-escolar/SKILL.md)",
+      "Bash(node --check src/public/js/valoracionesAutosave.js)",
+      "Bash(node -e \"require\\('./src/controllers/misCursos.controller'\\); console.log\\('OK'\\)\")",
+      "Bash(node --check src/routes/misCursos.router.js)",
+      "Bash(node --check src/public/js/asignaturasDocentes.js)",
+      "Bash(grep -n \"modalTransferir\\\\|</div>\\\\s*$\\\\|<script src\" src/views/pages/misCursoDetalle.ejs)",
+      "Bash(node --check src/public/js/valoracionesMatrizAutosave.js)",
+      "Bash(git init *)",
+      "Bash(git branch *)"
+    ]
+  }
+}

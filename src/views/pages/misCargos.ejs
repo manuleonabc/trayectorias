@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trayectorias - Docentes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <%- include('../partials/msj') %>
+    <%- include('../partials/nav') %>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h1 class="h3 fw-bold mb-0">Docentes</h1>
+                <p class="text-secondary mb-0"><%= institucion.nombre %></p>
+            </div>
+            <a href="/inicio" class="btn btn-outline-secondary btn-sm">Volver a inicio</a>
+        </div>
+
+        <!-- Solo lectura: quien ocupa cada cargo hoy. Sin alta, edicion ni designacion -
+             eso sigue siendo exclusivo de /admin/cargos. -->
+        <div class="card">
+            <div class="card-header">Cargos (<%= cargosConActiva.length %>)</div>
+            <div class="card-body p-0">
+                <% if (cargosConActiva.length === 0) { %>
+                <p class="text-muted p-3 mb-0">No hay cargos creados en esta institución.</p>
+                <% } else { %>
+                <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Rol</th>
+                            <th>Asignatura</th>
+                            <th>Curso</th>
+                            <th>Turno</th>
+                            <th>Ejerce hoy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% cargosConActiva.forEach(function (item) { %>
+                        <% const cargo = item.cargo, activa = item.activa; %>
+                        <tr>
+                            <td><%= cargo.rolId ? cargo.rolId.nombre : '—' %></td>
+                            <td><%= cargo.asignaturaId ? cargo.asignaturaId.nombre : '—' %></td>
+                            <td><%= cargo.cursoId ? cargo.cursoId.clave : '—' %></td>
+                            <td><%= cargo.turnoId ? cargo.turnoId.nombre : '—' %></td>
+                            <td>
+                                <% if (activa) { %>
+                                    <%= activa.personaId.apellido %>, <%= activa.personaId.nombre %>
+                                    <span class="badge text-bg-secondary"><%= activa.situacionRevista %></span>
+                                <% } else { %>
+                                    <span class="text-muted">Vacante</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const alertas = document.querySelectorAll('.auto-close');
+            alertas.forEach(function (alerta) {
+                setTimeout(function () {
+                    new bootstrap.Alert(alerta).close();
+                }, 5000);
+            });
+        });
+    </script>
+</body>
+</html>

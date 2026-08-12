@@ -1,0 +1,18 @@
+<!-- <select> de Nacionalidad: se muestra y se ordena por el gentilicio (no por el nombre
+     del pais), que es lo que efectivamente se guarda en Persona/AdultoResponsable
+     .nacionalidad - datos en "paises" (global en res.locals, ver app.js -
+     data/paisesNacionalidad.js). Reusado tal cual (mismo id, sin wrapper) en el form de
+     estudiante (dentro de nacimientoFields.ejs) y en el de persona responsable
+     (estudianteDetalle.ejs). En nacimientoFields.ejs, /js/nacimiento.js precarga
+     "Argentina" si el lugar de nacimiento elegido es Argentina y el campo todavia esta
+     vacio. Local opcional "nacionalidadSeleccionada" (string): para edicion, precarga la
+     opcion actual. Local opcional "idSufijo": ver documentoFields.ejs, mismo motivo (evitar
+     ids repetidos si la pagina incluye este partial mas de una vez). -->
+<% const seleccionada = typeof nacionalidadSeleccionada !== 'undefined' ? (nacionalidadSeleccionada || '') : ''; %>
+<% const sufijo = typeof idSufijo !== 'undefined' ? idSufijo : ''; %>
+<select name="nacionalidad" id="nacionalidadInput<%= sufijo %>" class="form-select">
+    <option value="">Sin especificar</option>
+    <% paises.slice().sort(function (a, b) { return a.nacionalidad.localeCompare(b.nacionalidad, 'es'); }).forEach(function (pais) { %>
+    <option value="<%= pais.nacionalidad %>" data-clave="<%= pais.clave %>" <%= pais.nacionalidad === seleccionada ? 'selected' : '' %>><%= pais.nacionalidad %></option>
+    <% }); %>
+</select>

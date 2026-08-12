@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trayectorias - Años</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <%- include('../../partials/msj') %>
+    <%- include('../../partials/nav') %>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 fw-bold mb-0">Años</h1>
+        </div>
+
+        <!-- Formulario de alta -->
+        <div class="card mb-4">
+            <div class="card-header">Nuevo año</div>
+            <div class="card-body">
+                <form action="/admin/anios" method="POST" class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">Clave</label>
+                        <input type="text" name="clave" class="form-control" placeholder="Ej: 4°" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Cuarto" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Ciclo</label>
+                        <select name="ciclo" class="form-select" required>
+                            <option value="">Seleccioná un ciclo</option>
+                            <option value="basico">Básico</option>
+                            <option value="superior">Superior</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Grado</label>
+                        <input type="number" name="grado" class="form-control" placeholder="Ej: 4" min="1">
+                        <div class="form-text">Orden absoluto (1° = 1, 2° = 2...). Define qué es anterior/posterior.</div>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Crear</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Listado -->
+        <div class="card">
+            <div class="card-header">Listado (<%= anios.length %>)</div>
+            <div class="card-body p-0">
+                <% if (anios.length === 0) { %>
+                <p class="text-muted p-3 mb-0">No hay años creados.</p>
+                <% } else { %>
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Clave</th>
+                            <th>Nombre</th>
+                            <th>Ciclo</th>
+                            <th>Grado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% anios.forEach(function (anio) { %>
+                        <tr>
+                            <td><%= anio.clave %></td>
+                            <td><%= anio.nombre %></td>
+                            <td><%= anio.ciclo %></td>
+                            <td><%= anio.grado != null ? anio.grado : '—' %></td>
+                            <td>
+                                <a href="/admin/anios/<%= anio.clave %>" class="btn btn-outline-secondary btn-sm">
+                                    Ver plan de estudio
+                                </a>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

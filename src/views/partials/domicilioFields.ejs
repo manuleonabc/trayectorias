@@ -1,0 +1,52 @@
+<!-- Domicilio de Persona (Estudiante) - Provincia/Distrito se cargan con selects
+     encadenados contra la API de Georef, con Buenos Aires / La Matanza como valores por
+     defecto (la mayoria de los estudiantes son del distrito, pero se pueden cambiar) salvo
+     que la pagina pase provinciaInicial/distritoInicial/localidadInicial a
+     initDomicilio(...) (edicion) - ver /js/domicilio.js. Localidad depende del distrito
+     elegido. Calle es un input de texto con autocompletado (datalist, tambien contra
+     Georef) que igual permite escribir una calle que no este en la lista. Local opcional
+     "persona": precarga calle/numero/piso/depto/entreCalles (las selects encadenadas se
+     precargan aparte, desde el <script> de la pagina que llama a initDomicilio). Local
+     opcional "idSufijo": ver documentoFields.ejs, mismo motivo (evitar ids repetidos si la
+     pagina incluye este partial mas de una vez). -->
+<% const dom = (typeof persona !== 'undefined' && persona && persona.domicilio) ? persona.domicilio : {}; %>
+<% const sufijo = typeof idSufijo !== 'undefined' ? idSufijo : ''; %>
+<div class="col-6 col-sm-4 col-md-3">
+    <label class="form-label">Provincia</label>
+    <select name="domicilioProvincia" id="domicilioProvinciaSelect<%= sufijo %>" class="form-select">
+        <option value="">Cargando...</option>
+    </select>
+</div>
+<div class="col-6 col-sm-4 col-md-3">
+    <label class="form-label">Distrito</label>
+    <select name="domicilioPartido" id="domicilioDistritoSelect<%= sufijo %>" class="form-select">
+        <option value="">Seleccionar provincia primero</option>
+    </select>
+</div>
+<div class="col-12 col-sm-4 col-md-3">
+    <label class="form-label">Localidad</label>
+    <select name="domicilioLocalidad" id="domicilioLocalidadSelect<%= sufijo %>" class="form-select">
+        <option value="">Seleccionar distrito primero</option>
+    </select>
+</div>
+<div class="col-8 col-sm-6 col-md-3">
+    <label class="form-label">Calle</label>
+    <input type="text" name="domicilioCalle" id="domicilioCalleInput<%= sufijo %>" class="form-control" list="domicilioCalleList<%= sufijo %>" autocomplete="address-line1" value="<%= dom.calle || '' %>">
+    <datalist id="domicilioCalleList<%= sufijo %>"></datalist>
+</div>
+<div class="col-4 col-sm-2 col-md-1">
+    <label class="form-label">N°</label>
+    <input type="text" name="domicilioNumero" class="form-control" value="<%= dom.numero || '' %>">
+</div>
+<div class="col-6 col-sm-3 col-md-2">
+    <label class="form-label">Piso</label>
+    <input type="text" name="domicilioPiso" class="form-control" value="<%= dom.piso || '' %>">
+</div>
+<div class="col-6 col-sm-3 col-md-2">
+    <label class="form-label">Depto</label>
+    <input type="text" name="domicilioDepto" class="form-control" value="<%= dom.depto || '' %>">
+</div>
+<div class="col-12 col-md-6">
+    <label class="form-label">Entre calles</label>
+    <input type="text" name="domicilioEntreCalles" class="form-control" value="<%= dom.entreCalles || '' %>">
+</div>

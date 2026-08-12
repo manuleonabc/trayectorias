@@ -1,0 +1,120 @@
+const Inscripcion = require('../models/Inscripcion');
+const Curso = require('../models/Curso');
+
+const populateCurso = {
+    path: 'cursoId',
+    populate: ['institucionId', 'anioId', 'turnoId', 'orientacionId']
+};
+
+// Numero inicial de un numeroRegistro (texto libre, ej "45 bis") - null si esta vacio o no
+// arranca con digitos.
+const numeroDeRegistro = (inscripcion) => {
+    if (!inscripcion.numeroRegistro) return null;
+    const match = /^(\d+)/.exec(inscripcion.numeroRegistro);
+    return match ? parseInt(match[1], 10) : null;
+};
+
+// Orden por defecto de "estudiantes inscriptos en un curso": primero por N° de registro
+// (numerico - refleja el orden del libro de matricula en papel), los que no tienen uno
+// cargado quedan al final; a igualdad, o entre los que no tienen registro, por apellido y
+// despues nombre. Pedido explicito del usuario. El control de tabla del lado del cliente
+// (ver public/js/tablaControl.js) permite reordenar por cualquier columna despues, este es
+// solo el orden inicial.
+const compararPorRegistroYApellido = (a, b) => {
+    const numA = numeroDeRegistro(a);
+    const numB = numeroDeRegistro(b);
+    if (numA != null && numB != null && numA !== numB) return numA - numB;
+    if (numA != null && numB == null) return -1;
+    if (numA == null && numB != null) return 1;
+    return a.estudianteId.personaId.apellido.localeCompare(b.estudianteId.personaId.apellido, 'es')
+        || a.estudianteId.personaId.nombre.localeCompare(b.estudianteId.personaId.nombre, 'es');
+};
+
+class InscripcionRepo {
+    // session opcional - ver matricular() y crearEstudianteEnCurso en
+    // estudiante.controller.js (alta atomica de Persona+Estudiante+Inscripcion+CursadaAsignatura).
+    async crear(datosInscripcion, session) {
+        const nuevaInscripcion = new Inscripcion(datosInscripcion);
+        return await nuevaInscripcion.save({ session });
+    }
+
+    async obtenerVigentePorEstudiante(estudianteId) {
+        return await Inscripcion.findOne({ estudianteId, fechaBaja: null }).populate(populateCurso);
+    }
+
+    async obtenerHistorialPorEstudiante(estudianteId) {
+        return await Inscripcion.find({ estudianteId }).sort({ fechaAlta: -1 }).populate(populateCurso);
+    }
+
+    async obtenerVigentesPorCurso(cursoId) {
+        const inscripciones = await Inscripcion.find({ cursoId, fechaBaja: null })
+            .populate({ path: 'estudianteId', populate: 'personaId' });
+        return inscripciones.sort(compararPorRegistroYApellido);
+    }
+
+    // Vigente O historica (sin filtrar fechaBaja) - guard para no poder eliminar un Curso
+    // que tuvo alguna vez estudiantes matriculados, aunque hoy no le quede ninguno vigente
+    // (perderian ese tramo de su trayectoria si el curso desaparece).
+    async existeAlgunaPorCurso(cursoId) {
+        return await Inscripcion.exists({ cursoId });
+    }
+
+    // Matricula a un curso: si el estudiante ya tenia una vigente (en este curso, otro
+    // curso de la misma institucion, u otra institucion), la cierra con el mismo
+    // motivo/fecha antes de abrir la nueva - cubre alta inicial y cambio de curso/escuela
+    // con la misma operacion. session opcional, mismo motivo que en crear().
+    async matricular({ estudianteId, cursoId, cicloLectivo, fecha, motivo, numeroRegistro, procedencia }, session) {
+        const vigente = await Inscripcion.findOne({ estudianteId, fechaBaja: null }).session(session);
+        if (vigente) {
+            vigente.fechaBaja = fecha;
+            vigente.motivoBaja = motivo;
+            await vigente.save({ session });
+        }
+        return await this.crear({
+            estudianteId,
+            cursoId,
+            cicloLectivo,
+            fechaAlta: fecha,
+            motivoAlta: motivo,
+            numeroRegistro: numeroRegistro || undefined,
+            procedencia: procedencia || undefined
+        }, session);
+    }
+
+    // Sugerencia de "N° de registro" al matricular: el consecutivo al mas alto ya usado en
+    // el libro de matricula de esta institucion (numeroRegistro es texto libre - "45 bis",
+    // etc - asi que se toma el numero inicial de cada uno con una regex y se ignoran los
+    // que no arrancan con digitos). Es solo una sugerencia precargada en el form, se puede
+    // editar/borrar - no hay garantia de que el libro real este sin huecos ni duplicados.
+    async obtenerSiguienteNumeroRegistro(institucionId) {
+        const cursos = await Curso.find({ institucionId }, '_id');
+        const inscripciones = await Inscripcion.find(
+            { cursoId: { $in: cursos.map((c) => c._id) }, numeroRegistro: { $nin: [null, ''] } },
+            'numeroRegistro'
+        );
+
+        let mayor = 0;
+        inscripciones.forEach((i) => {
+            const match = /^(\d+)/.exec(i.numeroRegistro);
+            if (match) mayor = Math.max(mayor, parseInt(match[1], 10));
+        });
+
+        return String(mayor + 1);
+    }
+
+    async darDeBaja(id, { fecha, motivo }) {
+        return await Inscripcion.findByIdAndUpdate(
+            id,
+            { fechaBaja: fecha, motivoBaja: motivo },
+            { new: true }
+        );
+    }
+
+    // Para la baja real de un Estudiante (ver postEliminarEstudiante) - borra las filas,
+    // nunca el Curso en si.
+    async eliminarPorEstudiante(estudianteId) {
+        return await Inscripcion.deleteMany({ estudianteId });
+    }
+}
+
+module.exports = new InscripcionRepo();

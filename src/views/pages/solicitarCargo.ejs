@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trayectorias - Solicitar cargo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <%- include('../partials/msj') %>
+    <%- include('../partials/nav') %>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 fw-bold mb-0">Solicitar cargo</h1>
+        </div>
+
+        <!-- Cargos vacantes -->
+        <div class="card mb-4">
+            <div class="card-header">Cargos vacantes (<%= vacantes.length %>)</div>
+            <div class="card-body p-0">
+                <% if (vacantes.length === 0) { %>
+                <p class="text-muted p-3 mb-0">No hay cargos vacantes por el momento.</p>
+                <% } else { %>
+                <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Institución</th>
+                            <th>Rol</th>
+                            <th>Turno</th>
+                            <th>Pedir</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% vacantes.forEach(function (cargo) { %>
+                        <tr>
+                            <td><%= cargo.institucionId ? cargo.institucionId.nombre : '—' %></td>
+                            <td>
+                                <%= cargo.rolId ? cargo.rolId.nombre : '—' %>
+                                <% if (cargo.asignaturaId) { %> — <%= cargo.asignaturaId.nombre %><% } %>
+                            </td>
+                            <td><%= cargo.turnoId ? cargo.turnoId.nombre : '—' %></td>
+                            <td>
+                                <form action="/solicitudes-cargo" method="POST" class="d-flex gap-2">
+                                    <input type="hidden" name="cargoId" value="<%= cargo._id %>">
+                                    <input type="text" name="mensaje" class="form-control form-control-sm" placeholder="Mensaje (opcional)">
+                                    <button type="submit" class="btn btn-primary btn-sm text-nowrap">Solicitar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Mis solicitudes -->
+        <div class="card">
+            <div class="card-header">Mis solicitudes (<%= misSolicitudes.length %>)</div>
+            <div class="card-body p-0">
+                <% if (misSolicitudes.length === 0) { %>
+                <p class="text-muted p-3 mb-0">Todavía no pediste ningún cargo.</p>
+                <% } else { %>
+                <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Institución</th>
+                            <th>Rol</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Motivo de rechazo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% misSolicitudes.forEach(function (solicitud) { %>
+                        <% const cargo = solicitud.cargoId; %>
+                        <tr>
+                            <td><%= cargo && cargo.institucionId ? cargo.institucionId.nombre : '—' %></td>
+                            <td><%= cargo && cargo.rolId ? cargo.rolId.nombre : '—' %></td>
+                            <td><%= solicitud.createdAt.toLocaleDateString('es-AR') %></td>
+                            <td>
+                                <% if (solicitud.estado === 'pendiente') { %>
+                                <span class="badge text-bg-secondary">Pendiente</span>
+                                <% } else if (solicitud.estado === 'aprobada') { %>
+                                <span class="badge text-bg-success">Aprobada</span>
+                                <% } else { %>
+                                <span class="badge text-bg-danger">Rechazada</span>
+                                <% } %>
+                            </td>
+                            <td><%= solicitud.motivoRechazo || '—' %></td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const alertas = document.querySelectorAll('.auto-close');
+            alertas.forEach(function (alerta) {
+                setTimeout(function () {
+                    new bootstrap.Alert(alerta).close();
+                }, 5000);
+            });
+        });
+    </script>
+</body>
+</html>

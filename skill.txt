@@ -1,0 +1,20 @@
+lo pienso así:
+los cargos son los cargos de planta. es decir, tienen un rol:
+(Director/a
+ViceDirector/a
+Secretario/a
+Preceptor/a
+EMATP
+Profesor/a
+y tal vez otro que ahora no recuerdo.)
+un CUPOF (que es un código único administrativo), 
+Dentro de los cargos hay particularidades:
+empezamos por los llamados jerárquicos,
+El Director suele se de 8 hs por día, administra el horario según conveniencia de la escuela alternando turnos según los días.
+los vices y secre suelen tener un horario de 4.5 horas por día y también organizan los días en función de que siempre haya un jerárquico en la escuela.
+Los llamados cargos Base:
+El preceptor, también de 4.5 hs diarias, pertenecen a un turno y casi siempre tienen el mismo horario de entrada y de salida durante la semana. Si bien pertenecen a un turno, suele pasar que el horario invade un poco al turno contiguo. Tienen cursos designados, suelen ser 2 curso por cargo aunque pueden llegar a tener más o menos según organización. Están a cargo de mantener actualizados los registros, las calificaciones y todo lo que tenga que ver con los estudiantes.
+El cargo de EMATP esl el Encargado de Medios de Apoyo Técnico Pedagógico, también de 4.5 hs por día, suele tener un rol más 'suelto' ya que incialmente estaba pensado para estar dentro de los laboratorios que fueron desapareciendo de a poco y ahora realizan tareas administrativas, el horario suele ser el mismo durante toda la semana pero puede haber excepciones.
+Finalmente, los Profesores que son los que dan clase, también toman su propia asistencia, califican, hacen informes y demás y son quienes más 'cargos' suelen tener ya que toman distintas horas en distintos cursos y distintas escuelas
+
+Turno va a tener nombre, hora (1°, de 7:30 a 8:30; 2°, 8:30 a 9:30; recreo, de 9:30 a 9:45; ph, de 6:30 a 7:30, etc.), como te dije más allá de que un cargo de base del turno mañana pueda terminar durante la tarde y viceversa. Lo profesores van a estar más atado al horario del turno ya que, por ej, un 3ro de la mañana en su 1° hora va a tener una asignatura en ese horario fijo

@@ -1,0 +1,34 @@
+<% mensajes = typeof mensajes !== 'undefined' && mensajes ? mensajes : { error: '', info: '', success: '', warning: '' } %>
+<% if (mensajes.error && mensajes.error.length> 0) { %>
+        <div class="alert alert-danger alert-dismissible fade show auto-close alert-fixed" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <%= mensajes.error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <% } %>
+
+            <% if (mensajes.info && mensajes.info.length> 0) { %>
+                <div class="alert alert-info alert-dismissible fade show auto-close alert-fixed" role="alert">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <%= mensajes.info %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <% } %>
+
+            <% if (mensajes.warning && mensajes.warning.length> 0) { %>
+                <div class="alert alert-warning alert-dismissible fade show auto-close alert-fixed" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <%= mensajes.warning %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <% } %>
+
+                    <% if (mensajes.success && mensajes.success.length> 0) { %>
+                        <div class="alert alert-success alert-dismissible fade show auto-close  alert-fixed"
+                            role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <%= mensajes.success %>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                        </div>
+                        <% } %>

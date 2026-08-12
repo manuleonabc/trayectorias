@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/img/LogoSicaa.png">
+    <title>Trayectorias - Bienvenido</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        /* Centrado absoluto */
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            /* Centrado vertical */
+            justify-content: center;
+            /* Centrado horizontal */
+            background-color: #0f0f0f;
+            margin: 0;
+        }
+
+        .card-welcome {
+            width: 100%;
+            max-width: 450px;
+            padding: 3rem 2rem;
+            border-radius: 20px;
+            background: #1a1a1a;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            text-align: center;
+        }
+
+        .logo-abc {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 2rem;
+            /* Filtro opcional para que resalte en modo dark si el logo es oscuro */
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.1));
+        }
+
+        .alert-fixed {
+            position: fixed;
+            top: 0px;
+            left: 0px;
+            width: 100%;
+            z-index: 9999;
+            /* Ensure it floats above other content */
+            border-radius: 0px;
+            /* Optional: makes it stretch across the top edge */
+        }
+    </style>
+</head>
+
+<body>
+<%- include('../partials/msj') %>
+    <% error = typeof error !== 'undefined' && error ? error : false %>
+    <% if (error) { %>
+    <div class="alert alert-danger alert-dismissible fade show auto-close alert-fixed" role="alert">
+        <strong>Acceso denegado.</strong> Tu cuenta no tiene permiso para ingresar al sistema.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <% } %>
+
+    <div class="card-welcome border border-dark">
+
+        <h1 class="h3 fw-bold mb-3">Trayectorias</h1>
+        <p class="text-secondary mb-5">Sistema de seguimiento y acompañamiento de trayectorias educativas</p>
+
+        <div class="d-grid">
+            <a href="/auth/google?admin=false" id="btnLogin"
+                class="btn btn-primary btn-lg fw-semibold shadow-sm transition-all">
+                <img src='/img/logoabcai.png' height="30" class="me-2" />
+                <span id="textBtn">Ingresar al Sistema</span>
+            </a>
+        </div>
+        <br>
+        <div class="form-check form-switch mb-4 d-inline-block">
+            <input class="form-check-input" type="checkbox" role="switch" id="checkGestion">
+            <label class="form-check-label text-secondary" for="checkGestion"
+                style="font-size: 0.9rem; cursor: pointer;">
+                Ingresar como Gestión / Admin
+            </label>
+        </div>
+
+
+
+        <p class="mt-4 text-muted x-small">CIIE</p>
+    </div>
+
+</body>
+
+<script>
+    // Esperamos a que el DOM esté cargado
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const checkGestion = document.getElementById('checkGestion');
+        const btnLogin = document.getElementById('btnLogin');
+        const textBtn = document.getElementById('textBtn');
+
+        if (checkGestion && btnLogin) {
+            checkGestion.addEventListener('change', function () {
+                if (this.checked) {
+                    // MODO GESTIÓN ACTIVO
+                    btnLogin.href = "/auth/google?admin=true";
+
+                    // Cambiamos el color: de azul (primary) a rojo (danger)
+                    btnLogin.classList.remove('btn-primary');
+                    btnLogin.classList.add('btn-outline-primary');
+
+                    // Cambiamos el texto para que sea más claro
+                    textBtn.innerText = "Ingresar como Gestión";
+
+                    console.log("Modo Gestión: ON - URL:", btnLogin.href);
+                } else {
+                    // MODO NORMAL
+                    btnLogin.href = "/auth/google?admin=false";
+
+                    // Volvemos al color original
+                    btnLogin.classList.remove('btn-outline-primary');
+                    btnLogin.classList.add('btn-primary');
+
+                    // Volvemos al texto original
+                    textBtn.innerText = "Ingresar al Sistema";
+
+                    console.log("Modo Gestión: OFF - URL:", btnLogin.href);
+                }
+            });
+        } else {
+            console.error("No se encontraron los elementos checkGestion o btnLogin");
+        }
+
+
+
+        // Seleccionamos todas las alertas que queremos que se cierren solas
+        const alertas = document.querySelectorAll('.auto-close');
+
+        alertas.forEach(function (alerta) {
+            // Configuramos el tiempo (4000ms = 4 segundos)
+            setTimeout(function () {
+                // Usamos la API nativa de Bootstrap para cerrarla con la animación 'fade'
+                const bsAlert = new bootstrap.Alert(alerta);
+                bsAlert.close();
+            }, 4000);
+        });
+    });
+</script>
+
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trayectorias - Roles</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <%- include('../../partials/msj') %>
+    <%- include('../../partials/nav') %>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 fw-bold mb-0">Roles</h1>
+        </div>
+
+        <!-- Formulario de alta -->
+        <div class="card mb-4">
+            <div class="card-header">Nuevo rol</div>
+            <div class="card-body">
+                <form action="/admin/roles" method="POST" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Director/a" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Nombre corto</label>
+                        <input type="text" name="nombreCorto" class="form-control" placeholder="Ej: Dire" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Clave</label>
+                        <input type="text" name="clave" class="form-control" placeholder="Ej: Dr" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Jerarquía</label>
+                        <input type="number" name="jerarquia" class="form-control" placeholder="Ej: 1" required>
+                        <div class="form-text">Menor número = más alto. Dejá huecos (100, 101...) para insertar después.</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Carga horaria</label>
+                        <input type="number" name="cargaHoraria" class="form-control" min="1" step="0.5">
+                        <div class="form-text">Dejá vacío si depende de la asignatura (ej: Profesor/a).</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Nivel de acceso</label>
+                        <select name="nivelAcceso" class="form-select">
+                            <option value="ninguno" selected>Ninguno</option>
+                            <option value="profesor">Profesor (solo su materia/curso)</option>
+                            <option value="preceptor">Preceptor (sus cursos)</option>
+                            <option value="total">Total (todo salvo baja real y plan de estudios)</option>
+                        </select>
+                        <div class="form-text">Qué puede hacer en /estudiantes alguien con este cargo activo.</div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Crear</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Listado -->
+        <div class="card">
+            <div class="card-header">Listado (<%= roles.length %>)</div>
+            <div class="card-body p-0">
+                <% if (roles.length === 0) { %>
+                <p class="text-muted p-3 mb-0">No hay roles creados.</p>
+                <% } else { %>
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Jerarquía</th>
+                            <th>Clave</th>
+                            <th>Nombre corto</th>
+                            <th>Nombre</th>
+                            <th>Carga horaria</th>
+                            <th>Nivel de acceso</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% roles.forEach(function (rol) { %>
+                        <tr>
+                            <td><%= rol.jerarquia %></td>
+                            <td><%= rol.clave %></td>
+                            <td><%= rol.nombreCorto %></td>
+                            <td><%= rol.nombre %></td>
+                            <td><%= rol.cargaHoraria != null ? rol.cargaHoraria + ' hs' : 'Según asignatura' %></td>
+                            <td><%= rol.nivelAcceso || 'ninguno' %></td>
+                            <td class="text-end">
+                                <a href="/admin/roles/<%= rol.clave %>/editar" class="btn btn-outline-secondary btn-sm">Editar</a>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

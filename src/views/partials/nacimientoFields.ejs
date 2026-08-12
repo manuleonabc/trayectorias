@@ -1,0 +1,46 @@
+<!-- "Lugar de nacimiento" + Nacionalidad de la planilla - solo se usa en los forms de
+     estudiante (Persona.nacimiento), la persona responsable solo tiene Nacionalidad
+     suelta en su propio form. Si el lugar es Argentina, provincia/distrito/localidad se
+     cargan con selects encadenados contra la API de Georef; si no, "nacimientoLocalidad"
+     pasa a ser un campo de texto libre para el lugar de nacimiento (ver /js/nacimiento.js
+     - initNacimiento(...) llamado en la pagina que lo incluye, con provinciaInicial/
+     distritoInicial/localidadInicial si es edicion). Local opcional "persona": precarga
+     los valores actuales en vez de arrancar vacio. Local opcional "idSufijo": ver
+     documentoFields.ejs, mismo motivo (evitar ids repetidos si la pagina incluye este
+     partial mas de una vez) - se propaga tambien al nacionalidadSelect anidado. -->
+<% const nac = (typeof persona !== 'undefined' && persona && persona.nacimiento) ? persona.nacimiento : {}; %>
+<% const sufijo = typeof idSufijo !== 'undefined' ? idSufijo : ''; %>
+<div class="col-6 col-sm-4 col-md-3">
+    <label class="form-label">Lugar de nacimiento</label>
+    <select name="nacimientoLugar" id="nacimientoLugarSelect<%= sufijo %>" class="form-select">
+        <option value="" <%= !nac.lugar ? 'selected' : '' %>>Sin especificar</option>
+        <option value="Argentina" <%= nac.lugar === 'Argentina' ? 'selected' : '' %>>Argentina</option>
+        <option value="Extranjero" <%= nac.lugar === 'Extranjero' ? 'selected' : '' %>>Extranjero</option>
+    </select>
+</div>
+<div class="col-6 col-sm-4 col-md-3">
+    <label class="form-label">Nacionalidad</label>
+    <%- include('nacionalidadSelect', { nacionalidadSeleccionada: nac.nacionalidad, idSufijo: sufijo }) %>
+</div>
+<div class="col-6 col-sm-4 col-md-3" id="nacimientoExtranjeroWrap<%= sufijo %>">
+    <label class="form-label">Lugar de nacimiento</label>
+    <input type="text" name="nacimientoLocalidad" id="nacimientoLocalidadTexto<%= sufijo %>" class="form-control" placeholder="Ciudad, país" value="<%= nac.lugar !== 'Argentina' ? (nac.localidad || '') : '' %>">
+</div>
+<div class="col-6 col-sm-4 col-md-3" id="nacimientoProvinciaWrap<%= sufijo %>">
+    <label class="form-label">Provincia de nacimiento</label>
+    <select name="nacimientoProvincia" id="nacimientoProvinciaSelect<%= sufijo %>" class="form-select">
+        <option value="">Seleccionar...</option>
+    </select>
+</div>
+<div class="col-6 col-sm-4 col-md-3" id="nacimientoDistritoWrap<%= sufijo %>">
+    <label class="form-label">Distrito</label>
+    <select name="nacimientoDistrito" id="nacimientoDistritoSelect<%= sufijo %>" class="form-select">
+        <option value="">Seleccionar provincia primero</option>
+    </select>
+</div>
+<div class="col-6 col-sm-4 col-md-3" id="nacimientoLocalidadWrap<%= sufijo %>">
+    <label class="form-label">Localidad de nacimiento</label>
+    <select name="nacimientoLocalidad" id="nacimientoLocalidadSelect<%= sufijo %>" class="form-select">
+        <option value="">Seleccionar distrito primero</option>
+    </select>
+</div>

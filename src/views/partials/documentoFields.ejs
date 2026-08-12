@@ -1,0 +1,44 @@
+<!-- Tipo de documento + subcampos condicionales (ver /js/tipoDocumento.js). Va dentro de
+     un <div class="row g-3">, y depende de initTipoDocumento(...) llamado en la pagina
+     que lo incluye. El aviso de "ya existe" (oculto por defecto) solo se activa si la
+     pagina tambien llama a initVerificarDocumento(...) - ver /js/verificarDocumento.js -
+     eso pasa unicamente en el alta de ESTUDIANTE, no en la de persona responsable ni en
+     la edicion (ahi el numero ya es el propio, chequear contra si mismo daria falso
+     positivo - ver postEditarEstudiante). Local opcional "persona": si se pasa (edicion),
+     precarga los valores actuales en vez de arrancar vacio. Local opcional "idSufijo": para
+     cuando esta pagina incluye este partial mas de una vez (ej. estudianteDetalle.ejs, que
+     tiene el form de responsable Y el de editar estudiante) - evita ids repetidos, que
+     romperian los document.querySelector(...) de los init*(...) de cada form. -->
+<% const doc = (typeof persona !== 'undefined' && persona) ? persona : {}; %>
+<% const sufijo = typeof idSufijo !== 'undefined' ? idSufijo : ''; %>
+<div class="col-6 col-sm-4 col-md-3">
+    <label class="form-label">Tipo de documento</label>
+    <select name="tipoDocumento" id="tipoDocumentoSelect<%= sufijo %>" class="form-select">
+        <option value="DNI" <%= (doc.tipoDocumento || 'DNI') === 'DNI' ? 'selected' : '' %>>DNI</option>
+        <option value="CPI" <%= doc.tipoDocumento === 'CPI' ? 'selected' : '' %>>CPI (en trámite de DNI)</option>
+        <option value="Documento extranjero" <%= doc.tipoDocumento === 'Documento extranjero' ? 'selected' : '' %>>Documento extranjero</option>
+        <option value="Sin documento" <%= doc.tipoDocumento === 'Sin documento' ? 'selected' : '' %>>Sin documento</option>
+    </select>
+</div>
+<div class="col-6 col-sm-4 col-md-3" id="numeroDocumentoWrap<%= sufijo %>">
+    <label class="form-label">Número</label>
+    <input type="text" name="numeroDocumento" id="numeroDocumentoInput<%= sufijo %>" class="form-control" inputmode="numeric" value="<%= doc.numeroDocumento || '' %>">
+</div>
+<div class="col-6 col-sm-4 col-md-3" id="estadoDniWrap<%= sufijo %>">
+    <label class="form-label">Estado del DNI</label>
+    <select name="estadoDni" class="form-select">
+        <option value="Tiene el DNI físico" <%= doc.estadoDni === 'Tiene el DNI físico' ? 'selected' : '' %>>Tiene el DNI físico</option>
+        <option value="En trámite" <%= doc.estadoDni === 'En trámite' ? 'selected' : '' %>>En trámite</option>
+        <option value="No tiene el DNI físico y no está en trámite" <%= doc.estadoDni === 'No tiene el DNI físico y no está en trámite' ? 'selected' : '' %>>No tiene el DNI físico y no está en trámite</option>
+    </select>
+</div>
+<div class="col-6 col-sm-4 col-md-3" id="documentoExtranjeroWrap<%= sufijo %>">
+    <label class="form-label">Tipo de documento extranjero</label>
+    <input type="text" name="documentoExtranjeroTipo" class="form-control" placeholder="Ej: Pasaporte" value="<%= doc.documentoExtranjeroTipo || '' %>">
+</div>
+<div class="col-12 d-none" id="numeroDocumentoAvisoWrap<%= sufijo %>">
+    <div class="alert alert-warning py-2 px-3 mb-0 d-flex justify-content-between align-items-center flex-wrap gap-2" role="alert">
+        <span id="numeroDocumentoAvisoTexto<%= sufijo %>"></span>
+        <a href="#" id="numeroDocumentoAvisoLink<%= sufijo %>" class="btn btn-sm btn-outline-warning d-none" target="_blank">Ver ficha</a>
+    </div>
+</div>
