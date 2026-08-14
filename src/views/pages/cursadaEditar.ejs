@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trayectorias - Cursada de <%= estudiante.personaId.apellido %>, <%= estudiante.personaId.nombre %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <%- include('../partials/msj') %>
+    <%- include('../partials/nav') %>
+
+    <% const persona = estudiante.personaId; %>
+    <% const claveEstudiante = persona.numeroDocumento || estudiante.legajo; %>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h1 class="h3 fw-bold mb-0">Cursada actual</h1>
+                <p class="text-secondary mb-0"><%= persona.apellido %>, <%= persona.nombre %></p>
+            </div>
+            <a href="/estudiantes/<%= claveEstudiante %>" class="btn btn-outline-secondary btn-sm">Volver a la ficha</a>
+        </div>
+
+        <!-- Relacion con el curso: solo los datos propios de la Inscripcion vigente (fecha/
+             motivo de alta, N° de registro, procedencia) - nunca el curso en si ni el ciclo
+             lectivo (eso es un cambio de curso/escuela, otro flujo). -->
+        <div class="card mb-4">
+            <div class="card-header">Relación con el curso</div>
+            <div class="card-body">
+                <p class="mb-3">
+                    <strong><%= vigente.cursoId.clave %></strong> — <%= vigente.cursoId.institucionId.nombre %>
+                    <span class="text-secondary">· Ciclo lectivo <%= vigente.cicloLectivo %></span>
+                </p>
+                <form action="/estudiantes/<%= claveEstudiante %>/cursada/editar" method="POST" class="row g-3">
+                    <div class="col-12 col-sm-6 col-md-3">
+                        <label class="form-label">Fecha de alta</label>
+                        <input type="date" name="fechaAlta" class="form-control" value="<%= vigente.fechaAlta.toISOString().slice(0, 10) %>" required>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4">
+                        <label class="form-label">Motivo de alta</label>
+                        <input type="text" name="motivoAlta" class="form-control" value="<%= vigente.motivoAlta %>" required>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">N° de registro</label>
+                        <input type="text" name="numeroRegistro" class="form-control" value="<%= vigente.numeroRegistro || '' %>">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Viene de</label>
+                        <input type="text" name="procedencia" class="form-control" value="<%= vigente.procedencia || '' %>">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-check-lg"></i> Guardar cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Materias asignadas: checklist del plan de estudio del año/orientacion del curso
+             (mas atrasadas de años anteriores), precargado con lo que el estudiante ya tiene
+             asignado - destildar saca la materia (nunca una ya aprobada, ver
+             eliminarVariasSiNoAprobadas), tildar la agrega. -->
+        <div class="card mb-4">
+            <div class="card-header">Materias asignadas</div>
+            <div class="card-body">
+                <p class="text-secondary small">
+                    Materias del plan de estudio de <%= vigente.cursoId.anioId.nombre %>
+                    <% if (vigente.cursoId.orientacionId) { %> (<%= vigente.cursoId.orientacionId.nombreCorto %>)<% } %>.
+                    Destildá las que no correspondan (ej. aprobadas en otro momento) y sumá atrasadas si hace falta -
+                    las ya aprobadas no aparecen acá.
+                </p>
+                <form action="/estudiantes/<%= claveEstudiante %>/cursada/materias" method="POST">
+                    <% if (precargadas.length === 0 && atrasadasPorAnio.length === 0) { %>
+                    <p class="text-muted mb-3">No hay materias pendientes para ofrecer en el checklist.</p>
+                    <% } %>
+                    <% if (precargadas.length > 0) { %>
+                    <div class="row g-2 mb-3">
+                        <% precargadas.forEach(function (asignatura) { %>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="materiaIds" value="<%= asignatura._id %>" id="materia<%= asignatura._id %>" <%= asignaturaIdsAsignadas.has(String(asignatura._id)) ? 'checked' : '' %>>
+                                <label class="form-check-label" for="materia<%= asignatura._id %>"><%= asignatura.nombre %></label>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+                    <% } %>
+                    <% if (atrasadasPorAnio.length > 0) { %>
+                    <p class="fw-bold small mb-2">Materias atrasadas</p>
+                    <% atrasadasPorAnio.forEach(function (grupo) { %>
+                    <p class="text-secondary small mb-1"><%= grupo.anio.nombre %></p>
+                    <div class="row g-2 mb-3">
+                        <% grupo.materias.forEach(function (asignatura) { %>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="materiaIds" value="<%= asignatura._id %>" id="materia<%= asignatura._id %>" <%= asignaturaIdsAsignadas.has(String(asignatura._id)) ? 'checked' : '' %>>
+                                <label class="form-check-label" for="materia<%= asignatura._id %>"><%= asignatura.nombre %></label>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+                    <% }); %>
+                    <% } %>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-lg"></i> Guardar materias
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Agregar materia fuera del checklist (ej. de otro año/orientacion) - la relacion
+             estudiante+materia es unica para siempre (ver CursadaAsignatura.js), no pide
+             ciclo lectivo: el detalle año a año se carga aparte, como Valoracion. -->
+        <div class="card mb-4">
+            <div class="card-header">Agregar materia</div>
+            <div class="card-body">
+                <form action="/estudiantes/<%= claveEstudiante %>/cursadas" method="POST" class="row g-3">
+                    <div class="col-md-9">
+                        <label class="form-label">Materia</label>
+                        <select name="asignaturaId" class="form-select" required>
+                            <option value="">Seleccioná una materia</option>
+                            <% asignaturas.forEach(function (asignatura) { %>
+                            <option value="<%= asignatura._id %>">
+                                <%= asignatura.nombre %>
+                                — <%= asignatura.anioId ? asignatura.anioId.nombre : '—' %>
+                                <% if (asignatura.orientacionId) { %> (<%= asignatura.orientacionId.nombreCorto %>)<% } %>
+                            </option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Agregar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Calificar cursada: todas las materias del estudiante (no solo las de este año),
+             con nota final y fecha al aprobar. Ya no agrupadas por año (CursadaAsignatura es
+             unica para siempre). -->
+        <div class="card">
+            <div class="card-header">Materias (<%= cursadas.length %>)</div>
+            <div class="card-body p-0">
+                <% if (cursadas.length === 0) { %>
+                <p class="text-muted p-3 mb-0">Todavía no hay materias cargadas.</p>
+                <% } else { %>
+                <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Materia</th>
+                            <th>Estado</th>
+                            <th>Nota final</th>
+                            <th>Fecha de aprobación</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% cursadas.forEach(function (cursada) { %>
+                        <tr>
+                            <td><%= cursada.asignaturaId.nombre %></td>
+                            <td>
+                                <% if (cursada.aprobada) { %>
+                                <span class="badge text-bg-success">Aprobada</span>
+                                <% } else { %>
+                                <span class="badge text-bg-secondary">Cursando</span>
+                                <% } %>
+                            </td>
+                            <td><%= cursada.notaFinal != null ? cursada.notaFinal : '—' %></td>
+                            <td><%= cursada.fechaAprobacion ? cursada.fechaAprobacion.toLocaleDateString('es-AR') : '—' %></td>
+                            <td>
+                                <% if (!cursada.aprobada) { %>
+                                <form action="/estudiantes/<%= claveEstudiante %>/cursadas/<%= cursada._id %>/aprobar" method="POST" class="d-flex gap-1">
+                                    <input type="number" name="notaFinal" min="1" max="10" class="form-control form-control-sm" placeholder="Nota" style="width: 70px;" required>
+                                    <input type="date" name="fechaAprobacion" class="form-control form-control-sm" required>
+                                    <button type="submit" class="btn btn-outline-success btn-sm">Aprobar</button>
+                                </form>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

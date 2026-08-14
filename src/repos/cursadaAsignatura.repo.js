@@ -69,6 +69,15 @@ class CursadaAsignaturaRepo {
         return await CursadaAsignatura.deleteMany({ estudianteId });
     }
 
+    // Para destildar materias del checklist de "Materias asignadas" de la cursada actual
+    // (ver getCursadaEditar/postCursadaMaterias en estudiante.controller.js) - nunca borra
+    // una ya aprobada, es un registro permanente.
+    async eliminarVariasSiNoAprobadas(estudianteId, asignaturaIds) {
+        const ids = [].concat(asignaturaIds || []).filter(Boolean);
+        if (ids.length === 0) return;
+        return await CursadaAsignatura.deleteMany({ estudianteId, asignaturaId: { $in: ids }, aprobada: false });
+    }
+
     async marcarAprobada(id, { fechaAprobacion, notaFinal }) {
         return await CursadaAsignatura.findByIdAndUpdate(
             id,

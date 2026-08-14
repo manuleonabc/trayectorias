@@ -297,6 +297,20 @@ const materiasPrecargadas = async (curso, aprobadasSet) => {
     return delAnio.filter((a) => !aprobadasSet.has(String(a._id)));
 };
 
+// Materias atrasadas (de años con grado menor al del curso, nunca posterior), agrupadas
+// por año - para el checklist de "Materias asignadas" de la cursada actual (ver
+// getCursadaEditar/postCursadaMaterias), que necesita mostrar de que año es cada una.
+const materiasAtrasadasPorAnio = async (curso, aprobadasSet) => {
+    if (curso.anioId.grado == null) return [];
+    const orientacionId = curso.orientacionId ? curso.orientacionId._id : null;
+    const aniosAnteriores = await Anio.find({ grado: { $lt: curso.anioId.grado } }).sort({ grado: 1 });
+    const grupos = await Promise.all(aniosAnteriores.map(async (anio) => ({
+        anio,
+        materias: (await materiasDelAnio(anio, orientacionId)).filter((a) => !aprobadasSet.has(String(a._id)))
+    })));
+    return grupos.filter((g) => g.materias.length > 0);
+};
+
 // Si no se tildo nada en el checklist (nunca se abrio el modal - el caso normal, un
 // estudiante suele cursar todas las materias del año), se anota por defecto en TODAS las
 // del plan de estudio del año/orientacion (menos las ya aprobadas, si es un estudiante
@@ -342,23 +356,16 @@ const getEstudianteDetalle = async (req, res) => {
     const estudiante = await estudianteRepo.obtenerPorClave(req.params.clave);
     if (!estudiante) return res.redirect('/estudiantes');
 
-    const [historial, cursadas, asignaturas, responsables] = await Promise.all([
+    const [historial, cursadas, responsables] = await Promise.all([
         inscripcionRepo.obtenerHistorialPorEstudiante(estudiante._id),
         cursadaAsignaturaRepo.obtenerPorEstudiante(estudiante._id),
-        Asignatura.find({}).populate('anioId').populate('orientacionId'),
         estudianteResponsableRepo.obtenerPorEstudiante(estudiante._id)
     ]);
     const vigente = historial.find((i) => !i.fechaBaja) || null;
 
-    asignaturas.sort((a, b) => {
-        const claveAnioA = a.anioId ? a.anioId.clave : '';
-        const claveAnioB = b.anioId ? b.anioId.clave : '';
-        return claveAnioA.localeCompare(claveAnioB) || a.nombre.localeCompare(b.nombre);
-    });
-
     // Las materias cursadas ya no tienen un ciclo lectivo propio (CursadaAsignatura es
-    // unica para siempre por estudiante+asignatura, ver el modelo) - se muestran aparte,
-    // en orden de año/materia, sin agrupar por año.
+    // unica para siempre por estudiante+asignatura, ver el modelo) - se ordenan por
+    // año/materia para mostrarlas en la tabla de "Materias en curso".
     cursadas.sort((a, b) => {
         const claveAnioA = a.asignaturaId.anioId ? a.asignaturaId.anioId.clave : '';
         const claveAnioB = b.asignaturaId.anioId ? b.asignaturaId.anioId.clave : '';
@@ -366,17 +373,114 @@ const getEstudianteDetalle = async (req, res) => {
     });
     const materiasEnCurso = cursadas.filter((c) => !c.aprobada);
 
-    // La trayectoria agrupa las inscripciones por ciclo lectivo (eso si sigue siendo por
-    // año - cada Inscripcion es a un curso concreto de un año concreto).
-    const ciclosLectivosConDatos = [...new Set(historial.map((i) => i.cicloLectivo))].sort((a, b) => b - a);
+    // El historial agrupado por ciclo lectivo va como "Historial" dentro de la misma card
+    // que la situacion actual (ver estudianteDetalle.ejs) - sin la vigente, que ya se
+    // muestra en detalle arriba (evita mostrarla dos veces).
+    const historialPasado = historial.filter((i) => i !== vigente);
+    const ciclosLectivosConDatos = [...new Set(historialPasado.map((i) => i.cicloLectivo))].sort((a, b) => b - a);
     const trayectoria = ciclosLectivosConDatos.map((cicloLectivo) => ({
         cicloLectivo,
-        inscripciones: historial.filter((i) => i.cicloLectivo === cicloLectivo)
+        inscripciones: historialPasado.filter((i) => i.cicloLectivo === cicloLectivo)
     }));
 
     res.render('pages/estudianteDetalle', {
-        estudiante, vigente, trayectoria, cursadas, materiasEnCurso, asignaturas, responsables
+        estudiante, vigente, trayectoria, materiasEnCurso, responsables
     });
+};
+
+// Vista para editar la relacion de la cursada actual (datos de la Inscripcion vigente +
+// que materias tiene asignadas) y calificar la cursada (agregar/aprobar materias) - todo
+// lo que antes vivia en la card "Materias" de estudianteDetalle.ejs (ver el pedido
+// original: esa card no hace falta en la ficha del estudiante, va aca junto con la edicion
+// de la cursada actual).
+const getCursadaEditar = async (req, res) => {
+    const estudiante = await estudianteRepo.obtenerPorClave(req.params.clave);
+    if (!estudiante) return res.redirect('/estudiantes');
+
+    const vigente = await inscripcionRepo.obtenerVigentePorEstudiante(estudiante._id);
+    if (!vigente) {
+        req.flash('error', 'Este estudiante no tiene ninguna inscripción vigente para editar.');
+        return res.redirect(`/estudiantes/${req.params.clave}`);
+    }
+
+    const cursadas = await cursadaAsignaturaRepo.obtenerPorEstudiante(estudiante._id);
+    cursadas.sort((a, b) => {
+        const claveAnioA = a.asignaturaId.anioId ? a.asignaturaId.anioId.clave : '';
+        const claveAnioB = b.asignaturaId.anioId ? b.asignaturaId.anioId.clave : '';
+        return claveAnioA.localeCompare(claveAnioB) || a.asignaturaId.nombre.localeCompare(b.asignaturaId.nombre);
+    });
+    const asignaturaIdsAsignadas = new Set(cursadas.map((c) => String(c.asignaturaId._id)));
+
+    const aprobadasSet = await obtenerAprobadasSet(estudiante._id);
+    const [precargadas, atrasadasPorAnio] = await Promise.all([
+        materiasPrecargadas(vigente.cursoId, aprobadasSet),
+        materiasAtrasadasPorAnio(vigente.cursoId, aprobadasSet)
+    ]);
+
+    const asignaturas = await Asignatura.find({}).populate('anioId').populate('orientacionId');
+    asignaturas.sort((a, b) => {
+        const claveAnioA = a.anioId ? a.anioId.clave : '';
+        const claveAnioB = b.anioId ? b.anioId.clave : '';
+        return claveAnioA.localeCompare(claveAnioB) || a.nombre.localeCompare(b.nombre);
+    });
+
+    res.render('pages/cursadaEditar', {
+        estudiante, vigente, cursadas, asignaturaIdsAsignadas, precargadas, atrasadasPorAnio, asignaturas
+    });
+};
+
+// Edita solo los datos propios de la Inscripcion vigente (nunca el curso ni el ciclo
+// lectivo - eso es un cambio de curso/escuela, ver Inscripcion.matricular).
+const postCursadaEditar = async (req, res) => {
+    const estudiante = await estudianteRepo.obtenerPorClave(req.params.clave);
+    if (!estudiante) return res.redirect('/estudiantes');
+
+    const vigente = await inscripcionRepo.obtenerVigentePorEstudiante(estudiante._id);
+    if (!vigente) return res.redirect(`/estudiantes/${req.params.clave}`);
+
+    const { fechaAlta, motivoAlta, numeroRegistro, procedencia } = req.body;
+    await inscripcionRepo.actualizar(vigente._id, {
+        fechaAlta: new Date(fechaAlta),
+        motivoAlta,
+        numeroRegistro,
+        procedencia
+    });
+
+    req.flash('success', 'Relación con el curso actualizada.');
+    res.redirect(`/estudiantes/${req.params.clave}/cursada/editar`);
+};
+
+// Checklist de "Materias asignadas" de la cursada actual: reconcilia lo tildado contra lo
+// que el estudiante ya tenia - agrega las nuevas (crearVarias, find-or-create) y saca las
+// destildadas, pero solo entre las que el checklist ofrecia (plan del año + atrasadas,
+// menos aprobadas) y nunca una ya aprobada (registro permanente, ver
+// eliminarVariasSiNoAprobadas).
+const postCursadaMaterias = async (req, res) => {
+    const estudiante = await estudianteRepo.obtenerPorClave(req.params.clave);
+    if (!estudiante) return res.redirect('/estudiantes');
+
+    const vigente = await inscripcionRepo.obtenerVigentePorEstudiante(estudiante._id);
+    if (!vigente) return res.redirect(`/estudiantes/${req.params.clave}`);
+
+    const aprobadasSet = await obtenerAprobadasSet(estudiante._id);
+    const [precargadas, atrasadasPorAnio] = await Promise.all([
+        materiasPrecargadas(vigente.cursoId, aprobadasSet),
+        materiasAtrasadasPorAnio(vigente.cursoId, aprobadasSet)
+    ]);
+    const disponibleIds = precargadas
+        .concat(atrasadasPorAnio.flatMap((g) => g.materias))
+        .map((a) => String(a._id));
+
+    const seleccionadas = new Set([].concat(req.body.materiaIds || []).filter(Boolean));
+
+    const paraAgregar = disponibleIds.filter((id) => seleccionadas.has(id));
+    const paraQuitar = disponibleIds.filter((id) => !seleccionadas.has(id));
+
+    await cursadaAsignaturaRepo.crearVarias(estudiante._id, paraAgregar);
+    await cursadaAsignaturaRepo.eliminarVariasSiNoAprobadas(estudiante._id, paraQuitar);
+
+    req.flash('success', 'Materias asignadas actualizadas.');
+    res.redirect(`/estudiantes/${req.params.clave}/cursada/editar`);
 };
 
 // Edicion de los datos propios de la Persona de un estudiante (documento, nombre,
@@ -465,12 +569,12 @@ const postCursada = async (req, res) => {
     const duplicado = await cursadaAsignaturaRepo.buscarDuplicado(estudiante._id, asignaturaId);
     if (duplicado) {
         req.flash('error', 'Ese estudiante ya tiene esa materia cargada.');
-        return res.redirect(`/estudiantes/${req.params.clave}`);
+        return res.redirect(`/estudiantes/${req.params.clave}/cursada/editar`);
     }
 
     await cursadaAsignaturaRepo.crear({ estudianteId: estudiante._id, asignaturaId });
     req.flash('success', 'Materia agregada.');
-    res.redirect(`/estudiantes/${req.params.clave}`);
+    res.redirect(`/estudiantes/${req.params.clave}/cursada/editar`);
 };
 
 const postAprobarCursada = async (req, res) => {
@@ -480,7 +584,7 @@ const postAprobarCursada = async (req, res) => {
         notaFinal: Number(notaFinal)
     });
     req.flash('success', 'Materia marcada como aprobada.');
-    res.redirect(`/estudiantes/${req.params.clave}`);
+    res.redirect(`/estudiantes/${req.params.clave}/cursada/editar`);
 };
 
 // Si ya hay un AdultoResponsable con ese numero de documento (ej. un hermano ya lo cargo
@@ -536,5 +640,6 @@ module.exports = {
     postCursada, postAprobarCursada, getMateriasSugeridas, ciclosLectivosDisponibles,
     construirDatosPersona, postResponsable, postQuitarResponsable, buscarDuplicadoIndocumentado,
     getVerificarDocumento, postEditarEstudiante, resolverMateriaIds, postEliminarEstudiante,
-    crearEstudianteEnCurso, inscribirExistenteEnCurso, calcularEstudiantesDisponibles
+    crearEstudianteEnCurso, inscribirExistenteEnCurso, calcularEstudiantesDisponibles,
+    getCursadaEditar, postCursadaEditar, postCursadaMaterias
 };

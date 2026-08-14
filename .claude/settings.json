@@ -23,7 +23,13 @@
       "Bash(grep -n \"modalTransferir\\\\|</div>\\\\s*$\\\\|<script src\" src/views/pages/misCursoDetalle.ejs)",
       "Bash(node --check src/public/js/valoracionesMatrizAutosave.js)",
       "Bash(git init *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "Bash(git -C c:/Users/manul/trayectorias diff --stat)",
+      "Bash(git -C c:/Users/manul/trayectorias diff -- src/controllers/estudiante.controller.js)",
+      "Bash(git -C c:/Users/manul/trayectorias status --porcelain src/)",
+      "Bash(node --check scripts/importarRegistro.js)",
+      "Bash(node scripts/importarRegistro.js)",
+      "Bash(node scripts/importarRegistro.js --commit)"
     ]
   }
 }

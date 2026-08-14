@@ -102,6 +102,17 @@ class InscripcionRepo {
         return String(mayor + 1);
     }
 
+    // Edita los datos propios de la inscripcion vigente (fecha/motivo de alta, N° de
+    // registro, procedencia) - nunca el curso en si (eso es un cambio de curso/escuela,
+    // ver matricular()) ni el ciclo lectivo.
+    async actualizar(id, { fechaAlta, motivoAlta, numeroRegistro, procedencia }) {
+        return await Inscripcion.findByIdAndUpdate(
+            id,
+            { fechaAlta, motivoAlta, numeroRegistro: numeroRegistro || undefined, procedencia: procedencia || undefined },
+            { new: true }
+        );
+    }
+
     async darDeBaja(id, { fecha, motivo }) {
         return await Inscripcion.findByIdAndUpdate(
             id,

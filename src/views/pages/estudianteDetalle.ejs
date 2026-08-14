@@ -365,9 +365,20 @@
             </div>
         </div>
 
-        <!-- Situacion actual -->
+        <!-- Trayectoria: situacion actual (relacion vigente con un curso, con sus
+             asignaturas) + historial de inscripciones anteriores agrupado por ciclo
+             lectivo, todo en una sola card. Las materias en si (agregar/calificar) ya no
+             viven aca - se editan junto con la relacion en /cursada/editar, ver el boton
+             "Editar" de abajo. -->
         <div class="card mb-4">
-            <div class="card-header">Situación actual</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Trayectoria</span>
+                <% if (vigente) { %>
+                <a href="/estudiantes/<%= claveEstudiante %>/cursada/editar" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                <% } %>
+            </div>
             <div class="card-body">
                 <% if (!vigente) { %>
                 <p class="text-muted mb-0">No tiene ninguna inscripción vigente.</p>
@@ -384,11 +395,24 @@
 
                 <% if (materiasEnCurso.length > 0) { %>
                 <p class="mb-1 mt-3"><strong>Materias en curso:</strong></p>
-                <ul class="mb-2">
-                    <% materiasEnCurso.forEach(function (cursada) { %>
-                    <li><%= cursada.asignaturaId.nombre %></li>
-                    <% }); %>
-                </ul>
+                <div class="table-responsive mb-2">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Materia</th>
+                            <th>Año</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% materiasEnCurso.forEach(function (cursada) { %>
+                        <tr>
+                            <td><%= cursada.asignaturaId.nombre %></td>
+                            <td><%= cursada.asignaturaId.anioId ? cursada.asignaturaId.anioId.clave : '—' %></td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                </div>
                 <% } %>
 
                 <form action="/estudiantes/<%= claveEstudiante %>/inscripciones/<%= vigente._id %>/baja" method="POST" class="row g-2 mt-2">
@@ -403,97 +427,13 @@
                     </div>
                 </form>
                 <% } %>
-            </div>
-        </div>
 
-        <!-- Agregar materia - la relacion estudiante+materia es unica para siempre (ver
-             CursadaAsignatura.js), no pide ciclo lectivo: el detalle año a año se carga
-             despues, aparte, como Valoracion. -->
-        <div class="card mb-4">
-            <div class="card-header">Agregar materia</div>
-            <div class="card-body">
-                <form action="/estudiantes/<%= claveEstudiante %>/cursadas" method="POST" class="row g-3">
-                    <div class="col-md-9">
-                        <label class="form-label">Materia</label>
-                        <select name="asignaturaId" class="form-select" required>
-                            <option value="">Seleccioná una materia</option>
-                            <% asignaturas.forEach(function (asignatura) { %>
-                            <option value="<%= asignatura._id %>">
-                                <%= asignatura.nombre %>
-                                — <%= asignatura.anioId ? asignatura.anioId.nombre : '—' %>
-                                <% if (asignatura.orientacionId) { %> (<%= asignatura.orientacionId.nombreCorto %>)<% } %>
-                            </option>
-                            <% }); %>
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">Agregar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Materias: ya no agrupadas por año (CursadaAsignatura es unica para siempre) -->
-        <div class="card mb-4">
-            <div class="card-header">Materias (<%= cursadas.length %>)</div>
-            <div class="card-body p-0">
-                <% if (cursadas.length === 0) { %>
-                <p class="text-muted p-3 mb-0">Todavía no hay materias cargadas.</p>
-                <% } else { %>
-                <div class="table-responsive">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th>Materia</th>
-                            <th>Estado</th>
-                            <th>Nota final</th>
-                            <th>Fecha de aprobación</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% cursadas.forEach(function (cursada) { %>
-                        <tr>
-                            <td><%= cursada.asignaturaId.nombre %></td>
-                            <td>
-                                <% if (cursada.aprobada) { %>
-                                <span class="badge text-bg-success">Aprobada</span>
-                                <% } else { %>
-                                <span class="badge text-bg-secondary">Cursando</span>
-                                <% } %>
-                            </td>
-                            <td><%= cursada.notaFinal != null ? cursada.notaFinal : '—' %></td>
-                            <td><%= cursada.fechaAprobacion ? cursada.fechaAprobacion.toLocaleDateString('es-AR') : '—' %></td>
-                            <td>
-                                <% if (!cursada.aprobada) { %>
-                                <form action="/estudiantes/<%= claveEstudiante %>/cursadas/<%= cursada._id %>/aprobar" method="POST" class="d-flex gap-1">
-                                    <input type="number" name="notaFinal" min="1" max="10" class="form-control form-control-sm" placeholder="Nota" style="width: 70px;" required>
-                                    <input type="date" name="fechaAprobacion" class="form-control form-control-sm" required>
-                                    <button type="submit" class="btn btn-outline-success btn-sm">Aprobar</button>
-                                </form>
-                                <% } %>
-                            </td>
-                        </tr>
-                        <% }); %>
-                    </tbody>
-                </table>
-                </div>
-                <% } %>
-            </div>
-        </div>
-
-        <!-- Trayectoria: inscripciones (a un curso, en un ciclo lectivo concreto),
-             agrupadas por año. Las materias cursadas van aparte, en la card "Materias" de
-             arriba (ya no tienen un año propio, ver CursadaAsignatura.js). -->
-        <div class="card">
-            <div class="card-header">Trayectoria</div>
-            <div class="card-body">
-                <% if (trayectoria.length === 0) { %>
-                <p class="text-muted mb-0">Todavía no hay inscripciones cargadas.</p>
-                <% } else { %>
+                <% if (trayectoria.length > 0) { %>
+                <hr class="my-4">
+                <h2 class="h6 fw-bold mb-3">Historial</h2>
                 <% trayectoria.forEach(function (ciclo, i) { %>
                 <div class="<%= i > 0 ? 'mt-4 pt-4 border-top' : '' %>">
-                    <h2 class="h6 fw-bold">Ciclo lectivo <%= ciclo.cicloLectivo %></h2>
+                    <h3 class="h6 fw-bold">Ciclo lectivo <%= ciclo.cicloLectivo %></h3>
 
                     <div class="table-responsive">
                     <table class="table table-sm mb-0">
