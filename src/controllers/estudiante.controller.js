@@ -228,12 +228,12 @@ const calcularEstudiantesDisponibles = async (inscripcionesVigentesDelCurso, tod
     const candidatos = todosLosEstudiantes.filter((e) => !idsYaInscriptos.has(String(e._id)));
 
     const anioActual = new Date().getFullYear();
-    const vigentes = await Promise.all(candidatos.map((e) => inscripcionRepo.obtenerVigentePorEstudiante(e._id)));
+    const vigentesPorEstudiante = await inscripcionRepo.obtenerVigentesPorEstudiantes(candidatos.map((e) => e._id));
 
     const estudiantesLibres = [];
     const estudiantesEnOtroCurso = [];
-    candidatos.forEach((estudiante, i) => {
-        const vigente = vigentes[i];
+    candidatos.forEach((estudiante) => {
+        const vigente = vigentesPorEstudiante.get(String(estudiante._id));
         if (vigente && vigente.cicloLectivo === anioActual) {
             estudiantesEnOtroCurso.push({ estudiante, vigente });
         } else {
@@ -250,10 +250,11 @@ const getEstudiantes = async (req, res) => {
         cursoRepo.obtenerTodos()
     ]);
 
-    const inscripciones = await Promise.all(
-        estudiantes.map((estudiante) => inscripcionRepo.obtenerVigentePorEstudiante(estudiante._id))
-    );
-    const estudiantesConInscripcion = estudiantes.map((estudiante, i) => ({ estudiante, inscripcion: inscripciones[i] }));
+    const vigentesPorEstudiante = await inscripcionRepo.obtenerVigentesPorEstudiantes(estudiantes.map((e) => e._id));
+    const estudiantesConInscripcion = estudiantes.map((estudiante) => ({
+        estudiante,
+        inscripcion: vigentesPorEstudiante.get(String(estudiante._id)) || null
+    }));
 
     res.render('pages/estudiantes', {
         estudiantesConInscripcion, cursos, ciclosLectivos: ciclosLectivosDisponibles(), fechaHoy: fechaHoy()

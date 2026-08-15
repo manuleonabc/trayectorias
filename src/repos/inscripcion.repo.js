@@ -42,6 +42,16 @@ class InscripcionRepo {
         return await Inscripcion.findOne({ estudianteId, fechaBaja: null }).populate(populateCurso);
     }
 
+    // Bulk fetch para listados grandes (ver getEstudiantes en estudiante.controller.js) -
+    // en vez de una consulta por estudiante (N+1, se nota fuerte con cientos de
+    // estudiantes), una sola consulta con $in trae todas las vigentes de una vez. Devuelve
+    // un Map por estudianteId (String) para lookup O(1) al armar la lista.
+    async obtenerVigentesPorEstudiantes(estudianteIds) {
+        const vigentes = await Inscripcion.find({ estudianteId: { $in: estudianteIds }, fechaBaja: null })
+            .populate(populateCurso);
+        return new Map(vigentes.map((i) => [String(i.estudianteId), i]));
+    }
+
     async obtenerHistorialPorEstudiante(estudianteId) {
         return await Inscripcion.find({ estudianteId }).sort({ fechaAlta: -1 }).populate(populateCurso);
     }

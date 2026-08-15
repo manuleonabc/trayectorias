@@ -31,4 +31,9 @@ const inscripcionSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+// La consulta mas comun de todo el sistema es "la inscripcion vigente de este estudiante"
+// (findOne({ estudianteId, fechaBaja: null })) - sin este indice compuesto, cada una hace
+// un collection scan completo. Se nota recien con volumen real (centenares de estudiantes).
+inscripcionSchema.index({ estudianteId: 1, fechaBaja: 1 });
+
 module.exports = mongoose.model('Inscripcion', inscripcionSchema);
