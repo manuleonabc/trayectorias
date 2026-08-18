@@ -29,7 +29,11 @@
       "Bash(git -C c:/Users/manul/trayectorias status --porcelain src/)",
       "Bash(node --check scripts/importarRegistro.js)",
       "Bash(node scripts/importarRegistro.js)",
-      "Bash(node scripts/importarRegistro.js --commit)"
+      "Bash(node scripts/importarRegistro.js --commit)",
+      "Bash(node --check src/repos/usuario.repo.js)",
+      "Bash(node --check src/controllers/admin/usuario.controller.js)",
+      "Bash(node --check src/routes/admin/usuario.router.js)",
+      "Bash(node --check src/controllers/alta.controller.js)"
     ]
   }
 }

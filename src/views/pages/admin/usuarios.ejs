@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trayectorias - Usuarios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <%- include('../../partials/msj') %>
+    <%- include('../../partials/nav') %>
+
+    <% const nombreDe = (usuario) => usuario.entidadId
+        ? (usuario.tipoModel === 'Persona'
+            ? `${usuario.entidadId.apellido}, ${usuario.entidadId.nombre}`
+            : usuario.entidadId.nombre)
+        : '—'; %>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 fw-bold mb-0">Usuarios</h1>
+        </div>
+
+        <!-- Pendientes de aprobacion - Usuario.estado arranca siempre en 'pendiente' (ver
+             Usuario.js), y sin aprobarlo aca la cuenta nunca puede loguearse (ver el
+             chequeo de estado en auth.router.js, antes que cualquier cosa de cargo). -->
+        <div class="card mb-4">
+            <div class="card-header">Pendientes de aprobación (<%= pendientes.length %>)</div>
+            <div class="card-body p-0">
+                <% if (pendientes.length === 0) { %>
+                <p class="text-muted p-3 mb-0">No hay solicitudes de alta pendientes.</p>
+                <% } else { %>
+                <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Solicitado</th>
+                            <th>Tipo</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% pendientes.forEach(function (usuario) { %>
+                        <tr>
+                            <td><%= usuario.createdAt.toLocaleDateString('es-AR') %></td>
+                            <td><%= usuario.tipo === 'institucion' ? 'Institución' : 'Personal' %></td>
+                            <td><%= nombreDe(usuario) %></td>
+                            <td><%= usuario.email %></td>
+                            <td class="text-end">
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <form action="/admin/usuarios/<%= usuario._id %>/aprobar" method="POST">
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="bi bi-check-lg"></i> Aprobar
+                                        </button>
+                                    </form>
+                                    <form action="/admin/usuarios/<%= usuario._id %>/rechazar" method="POST">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-x-lg"></i> Rechazar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Resueltas - de solo lectura, para no perder de vista a quien ya se le aprobo o
+             rechazo la cuenta (sin esto, una vez aprobado un usuario desaparecia de la
+             vista y no habia forma de confirmar que la accion se hizo). -->
+        <div class="card">
+            <div class="card-header">Resueltos (<%= resueltos.length %>)</div>
+            <div class="card-body p-0">
+                <% if (resueltos.length === 0) { %>
+                <p class="text-muted p-3 mb-0">Todavía no se resolvió ninguna solicitud.</p>
+                <% } else { %>
+                <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% resueltos.forEach(function (usuario) { %>
+                        <tr>
+                            <td><%= usuario.tipo === 'institucion' ? 'Institución' : 'Personal' %></td>
+                            <td><%= nombreDe(usuario) %></td>
+                            <td><%= usuario.email %></td>
+                            <td>
+                                <% if (usuario.estado === 'aprobado') { %>
+                                <span class="badge text-bg-success">Aprobado</span>
+                                <% } else { %>
+                                <span class="badge text-bg-danger">Rechazado</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
