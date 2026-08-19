@@ -3,6 +3,7 @@ const designacionRepo = require('../../repos/designacion.repo');
 const licenciaRepo = require('../../repos/licencia.repo');
 const cargoCursoRepo = require('../../repos/cargoCurso.repo');
 const solicitudCargoRepo = require('../../repos/solicitudCargo.repo');
+const usuarioRepo = require('../../repos/usuario.repo');
 const cursoRepo = require('../../repos/curso.repo');
 const turnoRepo = require('../../repos/turno.repo');
 const rolRepo = require('../../repos/rol.repo');
@@ -98,7 +99,7 @@ const getCargoDetalle = async (req, res) => {
     const [{ base, suplentesVigentes }, historial, personas, cursosDelCargo, cursosDeLaInstitucion, solicitudesPendientes] = await Promise.all([
         designacionRepo.obtenerCadenaPorCargo(cargo._id),
         designacionRepo.obtenerHistorialPorCargo(cargo._id),
-        Persona.find({}).sort({ apellido: 1 }),
+        usuarioRepo.obtenerPersonasConCuenta(),
         cargoCursoRepo.obtenerPorCargo(cargo._id),
         cursoRepo.obtenerPorInstitucion(cargo.institucionId._id),
         solicitudCargoRepo.obtenerPendientesPorCargo(cargo._id)

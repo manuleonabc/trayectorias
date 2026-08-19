@@ -33,7 +33,8 @@
       "Bash(node --check src/repos/usuario.repo.js)",
       "Bash(node --check src/controllers/admin/usuario.controller.js)",
       "Bash(node --check src/routes/admin/usuario.router.js)",
-      "Bash(node --check src/controllers/alta.controller.js)"
+      "Bash(node --check src/controllers/alta.controller.js)",
+      "Bash(git fetch *)"
     ]
   }
 }

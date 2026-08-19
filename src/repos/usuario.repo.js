@@ -1,5 +1,6 @@
 // repos/usuarioRepo.js
 const Usuario = require('../models/Usuario'); // El modelo que definimos antes
+const Persona = require('../models/Persona');
 //const Ciie = require('../models/Ciie'); // <--
 
 class UsuarioRepo {
@@ -42,6 +43,15 @@ class UsuarioRepo {
 
     async actualizarEstado(id, estado) {
         return await Usuario.findByIdAndUpdate(id, { estado }, { new: true });
+    }
+
+    // Solo las Persona que tienen su propia cuenta de Usuario (agentes con mail
+    // @abc.gob.ar) - Persona es un modelo compartido con Estudiante, que NUNCA tiene
+    // Usuario propio, asi que un Persona.find({}) sin filtrar tambien trae estudiantes.
+    // Usado para el selector de "Designar" de un Cargo (ver admin/cargo.controller.js).
+    async obtenerPersonasConCuenta() {
+        const entidadIds = await Usuario.find({ tipoModel: 'Persona' }).distinct('entidadId');
+        return await Persona.find({ _id: { $in: entidadIds } }).sort({ apellido: 1 });
     }
 }
 
