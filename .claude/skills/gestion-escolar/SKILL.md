@@ -518,7 +518,53 @@ factorizado en `materiasPrecargadas`). El checklist (renombrado "Editar
 materias") pasa a ser para el caso de **excepcion**: sacar materias que no
 cursa, o sumar atrasadas.
 
-## Inscribir estudiante existente — anotar directo vs. transferir con aviso
+## Reubicacion de estudiantes entre cursos — `SolicitudReubicacion` (2026-10-08)
+
+Pedido explicito del usuario: en `/mis-cursos` **ningun movimiento entre cursos se
+hace de un solo lado**. Reemplaza, solo en `/mis-cursos`, al viejo "Inscribir
+estudiante existente" (que cargaba TODOS los estudiantes + sus vigentes en cada visita
+al detalle del curso, aunque solo se quisiera consultar) y al "Reubicar" directo de
+`misCursoEditar.ejs`. El panel de admin (`admin/cursoDetalle.ejs`) **sigue con el
+mecanismo viejo** (seccion siguiente), sin tocar.
+
+- **Modelo** `SolicitudReubicacion` + `solicitudReubicacion.repo.js`: `estudianteId`,
+  `inscripcionOrigenId` (la vigente al pedir), `cursoOrigenId`, `cursoDestinoId`,
+  `sentido` (`'enviar'` = lo pide el origen, confirma el destino; `'traer'` = lo pide
+  el destino, confirma el origen), `fecha`/`motivo`, `numeroRegistro` (libro del
+  DESTINO: lo carga el solicitante en `'traer'`, quien confirma en `'enviar'`),
+  `estado` (`pendiente|aprobada|rechazada|cancelada`), `solicitadoPor`/`resueltoPor`
+  (nombre de usuario del mail, `utils/hechoPor.js`), `cargoSolicitanteId`. Indice unico
+  parcial: una sola pendiente por estudiante.
+- **Quien confirma**: cualquiera con acceso al curso confirmante (preceptor designado
+  este año o `nivelAcceso: 'total'`, via `resolverCursoPermitido`). **Entre escuelas
+  distintas, solo jerarquicos** piden y confirman (pedido explicito). Por ahora "traer"
+  puede ser entre escuelas (el jerarquico busca y ve la escuela de origen; un
+  preceptor solo ve "Inscripto en otra escuela", sin cual); "enviar" solo dentro de la
+  misma escuela.
+- **Sin inscripcion vigente este año** (o vigente de un año anterior): se anota
+  directo, sin solicitud — no hay otro lado. Revalidado server-side en `postAnotar`.
+- **Al aprobar**: revalida que la vigente siga siendo `inscripcionOrigenId` (si no,
+  la cierra como rechazada), marca `aprobada` atomicamente (`findOneAndUpdate` con
+  `estado: 'pendiente'`, evita doble confirmacion), y recien ahi
+  `inscribirExistenteEnCurso` (transaccion, `matricular` cierra la vigente). Si falla,
+  `volverAPendiente`. `procedencia` = curso + escuela de origen.
+- **Pantalla** `/mis-cursos/:cursoClave/reubicaciones`
+  (`reubicacion.controller.js`, `misCursoReubicaciones.ejs`): "Esperando tu
+  confirmacion", buscador (`estudianteRepo.buscar`: documento/legajo exacto o
+  apellido que empieza con, max 20 — nunca la lista completa, GET form sin JS),
+  "Enviar a otro curso", "Solicitudes de este curso" (cancelables mientras esten
+  pendientes). Badge de pendientes en el listado de `/mis-cursos` y en el detalle.
+
+### Aviso en vivo de nombre repetido (sin documento)
+
+`GET /estudiantes/verificar-nombre` + `/js/verificarNombre.js`
+(`initVerificarNombre('#formAltaEstudiante...')`, en los 3 forms de alta de
+estudiante): si no hay numero de documento (o tipo "Sin documento"), avisa mientras se
+tipea si ya hay estudiantes con el mismo apellido+nombre exactos, marcando los que
+coinciden en fecha de nacimiento, con link a la ficha. No bloquea — el aviso al guardar
+(`buscarDuplicadoIndocumentado`) sigue igual.
+
+## Inscribir estudiante existente — anotar directo vs. transferir con aviso (solo panel de admin)
 
 Pedido explicito del usuario: al inscribir un estudiante que ya existe en
 un curso (`cursoDetalle.ejs`/`misCursoDetalle.ejs`), separar dos casos que

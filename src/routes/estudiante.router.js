@@ -18,6 +18,7 @@ router.get('/', estudianteController.getEstudiantes);
 router.post('/', estudianteController.postEstudiante);
 router.get('/materias-sugeridas/:institucionClave/:cursoClave', estudianteController.getMateriasSugeridas);
 router.get('/verificar-documento', estudianteController.getVerificarDocumento);
+router.get('/verificar-nombre', estudianteController.getVerificarNombre);
 router.get('/:clave', estudianteController.getEstudianteDetalle);
 router.post('/:clave/editar', estudianteController.postEditarEstudiante);
 router.post('/:clave/eliminar', requireAdmin, estudianteController.postEliminarEstudiante);

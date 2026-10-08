@@ -45,6 +45,32 @@ class EstudianteRepo {
         return await Estudiante.findOne({ legajo: clave }).populate('personaId');
     }
 
+    // Buscador acotado (ver reubicacion.controller.js) - en vez de listar a TODOS los
+    // estudiantes del sistema en un <select>: por numero de documento o legajo exacto, o
+    // por apellido que empiece con el texto (apellido se guarda en mayusculas, ver
+    // Persona.js). Devuelve como mucho `limite` resultados.
+    async buscar(texto, limite = 20) {
+        const q = texto.trim();
+        if (q.length < 3) return [];
+        const personas = await Persona.find({
+            $or: [{ numeroDocumento: q }, { apellido: new RegExp('^' + escaparRegex(q.toUpperCase())) }]
+        }, '_id').limit(limite);
+        const estudiantes = await Estudiante.find({
+            $or: [{ personaId: { $in: personas.map((p) => p._id) } }, { legajo: q }]
+        }).populate('personaId').limit(limite);
+        return estudiantes.sort((a, b) => a.personaId.apellido.localeCompare(b.personaId.apellido, 'es')
+            || a.personaId.nombre.localeCompare(b.personaId.nombre, 'es'));
+    }
+
+    // Posibles duplicados por nombre (ver getVerificarNombre en estudiante.controller.js) -
+    // mismo apellido+nombre exactos (en mayusculas, como se guardan), solo entre personas
+    // que son estudiantes.
+    async buscarPorNombreExacto(apellido, nombre, limite = 5) {
+        const personas = await Persona.find({ apellido, nombre }, '_id').limit(limite);
+        if (personas.length === 0) return [];
+        return await Estudiante.find({ personaId: { $in: personas.map((p) => p._id) } }).populate('personaId');
+    }
+
     // Baja real (ver postEliminarEstudiante) - solo borra este documento, no su Persona
     // (eso lo maneja el controller, que tambien limpia Inscripcion/CursadaAsignatura/
     // EstudianteResponsable relacionados antes de llegar aca).

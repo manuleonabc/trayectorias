@@ -51,7 +51,14 @@
                     <tbody>
                         <% cursos.forEach(function (curso) { %>
                         <tr>
-                            <td><%= curso.clave %></td>
+                            <td>
+                                <%= curso.clave %>
+                                <% const pendientes = pendientesPorCurso.get(String(curso._id)); %>
+                                <% if (pendientes) { %>
+                                <a href="/mis-cursos/<%= curso.clave %>/reubicaciones" class="badge text-bg-warning text-decoration-none ms-1"
+                                    title="Reubicaciones esperando confirmación"><i class="bi bi-arrow-left-right"></i> <%= pendientes %></a>
+                                <% } %>
+                            </td>
                             <td><%= curso.anioId.nombre %> "<%= curso.division %>"</td>
                             <td><%= curso.turnoId ? curso.turnoId.nombre : '—' %></td>
                             <td><%= curso.orientacionId ? curso.orientacionId.nombre : '—' %></td>

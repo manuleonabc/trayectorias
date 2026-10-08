@@ -17,9 +17,9 @@ const numeroDeRegistro = (inscripcion) => {
 // Orden por defecto de "estudiantes inscriptos en un curso": primero por N° de registro
 // (numerico - refleja el orden del libro de matricula en papel), los que no tienen uno
 // cargado quedan al final; a igualdad, o entre los que no tienen registro, por apellido y
-// despues nombre. Pedido explicito del usuario. El control de tabla del lado del cliente
-// (ver public/js/tablaControl.js) permite reordenar por cualquier columna despues, este es
-// solo el orden inicial.
+// despues nombre. Pedido explicito del usuario: subir/bajar una fila (ver
+// subirRegistro/bajarRegistro mas abajo) reasigna directamente el N° de registro con la
+// fila vecina - no hay un "orden" separado, el numero del libro ES el orden.
 const compararPorRegistroYApellido = (a, b) => {
     const numA = numeroDeRegistro(a);
     const numB = numeroDeRegistro(b);
@@ -60,6 +60,39 @@ class InscripcionRepo {
         const inscripciones = await Inscripcion.find({ cursoId, fechaBaja: null })
             .populate({ path: 'estudianteId', populate: 'personaId' });
         return inscripciones.sort(compararPorRegistroYApellido);
+    }
+
+    async obtenerPorId(id) {
+        return await Inscripcion.findById(id);
+    }
+
+    // Intercambia el N° de registro entre dos inscripciones vecinas - devuelve [actual,
+    // vecino] en ese orden fijo, para que el llamador (ver misCursos.controller.js) sepa
+    // cual es cual al armar la respuesta AJAX.
+    async intercambiarRegistro(actual, vecino) {
+        const registroActual = actual.numeroRegistro;
+        actual.numeroRegistro = vecino.numeroRegistro;
+        vecino.numeroRegistro = registroActual;
+        await Promise.all([actual.save(), vecino.save()]);
+        return [actual, vecino];
+    }
+
+    // Sube/baja una inscripcion en la lista de un curso reasignando su N° de registro con
+    // el de la fila vecina (pedido explicito del usuario: el numero del libro ES el orden,
+    // no un campo separado) - null si ya esta en la punta y no hay vecino con quien
+    // intercambiar.
+    async subirRegistro(cursoId, inscripcionId) {
+        const vigentes = await this.obtenerVigentesPorCurso(cursoId);
+        const idx = vigentes.findIndex((i) => String(i._id) === String(inscripcionId));
+        if (idx <= 0) return null;
+        return this.intercambiarRegistro(vigentes[idx], vigentes[idx - 1]);
+    }
+
+    async bajarRegistro(cursoId, inscripcionId) {
+        const vigentes = await this.obtenerVigentesPorCurso(cursoId);
+        const idx = vigentes.findIndex((i) => String(i._id) === String(inscripcionId));
+        if (idx === -1 || idx >= vigentes.length - 1) return null;
+        return this.intercambiarRegistro(vigentes[idx], vigentes[idx + 1]);
     }
 
     // Vigente O historica (sin filtrar fechaBaja) - guard para no poder eliminar un Curso

@@ -34,7 +34,11 @@
       "Bash(node --check src/controllers/admin/usuario.controller.js)",
       "Bash(node --check src/routes/admin/usuario.router.js)",
       "Bash(node --check src/controllers/alta.controller.js)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node --check src/public/js/misCursoEditarOrden.js)"
     ]
   }
 }

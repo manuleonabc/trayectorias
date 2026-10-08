@@ -30,7 +30,7 @@
             </div>
             <div class="collapse<%= mensajes.error ? ' show' : '' %>" id="formAltaEstudiante">
             <div class="card-body">
-                <form action="/estudiantes" method="POST">
+                <form id="formAltaEstudianteForm" action="/estudiantes" method="POST">
 
                     <!-- Datos personales -->
                     <h2 class="h6 fw-bold d-flex align-items-center gap-2 mb-3">
@@ -219,6 +219,7 @@
     <script src="/js/telefonos.js"></script>
     <script src="/js/tipoDocumento.js"></script>
     <script src="/js/verificarDocumento.js"></script>
+    <script src="/js/verificarNombre.js"></script>
     <script src="/js/nacimiento.js"></script>
     <script src="/js/domicilio.js"></script>
     <script>
@@ -232,6 +233,7 @@
 
             initTelefonos('#telefonosContainer', '#btnAgregarTelefono');
             initTipoDocumento('#tipoDocumentoSelect', '#numeroDocumentoWrap', '#estadoDniWrap', '#documentoExtranjeroWrap');
+            initVerificarNombre('#formAltaEstudianteForm');
             initVerificarDocumento({
                 input: '#numeroDocumentoInput',
                 avisoWrap: '#numeroDocumentoAvisoWrap',

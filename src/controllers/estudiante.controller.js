@@ -122,6 +122,32 @@ const getVerificarDocumento = async (req, res) => {
     });
 };
 
+// Mismo criterio que getVerificarDocumento, pero para el estudiante SIN documento (ver
+// /js/verificarNombre.js): avisa en vivo si ya hay estudiantes con el mismo apellido y
+// nombre, marcando los que ademas coinciden en fecha de nacimiento (el caso de
+// buscarDuplicadoIndocumentado, que se sigue chequeando al guardar). Nunca bloquea.
+const getVerificarNombre = async (req, res) => {
+    const apellido = aMayusculas((req.query.apellido || '').trim());
+    const nombre = aMayusculas((req.query.nombre || '').trim());
+    if (apellido.length < 2 || nombre.length < 2) return res.json({ coincidencias: [] });
+
+    const fechaNacimiento = req.query.fechaNacimiento ? new Date(req.query.fechaNacimiento) : null;
+    const estudiantes = await estudianteRepo.buscarPorNombreExacto(apellido, nombre);
+    res.json({
+        coincidencias: estudiantes.map((e) => {
+            const persona = e.personaId;
+            return {
+                nombreCompleto: `${persona.apellido}, ${persona.nombre}`,
+                documento: persona.numeroDocumento ? `Doc. ${persona.numeroDocumento}` : `Legajo ${e.legajo}`,
+                clave: persona.numeroDocumento || e.legajo,
+                fechaNacimiento: persona.fecha_nacimiento ? persona.fecha_nacimiento.toISOString().slice(0, 10) : null,
+                mismaFecha: !!(fechaNacimiento && persona.fecha_nacimiento
+                    && persona.fecha_nacimiento.getTime() === fechaNacimiento.getTime())
+            };
+        })
+    });
+};
+
 // Alta de estudiante nuevo, con el curso ya resuelto por el llamador - compartido por
 // admin/curso.controller.js (institucion activa de un admin en modo gestion) y
 // misCursos.controller.js (curso propio de un docente con nivelAcceso 'total'/'preceptor',
@@ -640,7 +666,7 @@ module.exports = {
     getEstudiantes, postEstudiante, getEstudianteDetalle, postBajaInscripcion,
     postCursada, postAprobarCursada, getMateriasSugeridas, ciclosLectivosDisponibles,
     construirDatosPersona, postResponsable, postQuitarResponsable, buscarDuplicadoIndocumentado,
-    getVerificarDocumento, postEditarEstudiante, resolverMateriaIds, postEliminarEstudiante,
+    getVerificarDocumento, getVerificarNombre, postEditarEstudiante, resolverMateriaIds, postEliminarEstudiante,
     crearEstudianteEnCurso, inscribirExistenteEnCurso, calcularEstudiantesDisponibles,
     getCursadaEditar, postCursadaEditar, postCursadaMaterias
 };

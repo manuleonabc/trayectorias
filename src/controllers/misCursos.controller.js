@@ -2,11 +2,9 @@ const cargoRepo = require('../repos/cargo.repo');
 const cursoRepo = require('../repos/curso.repo');
 const cargoCursoRepo = require('../repos/cargoCurso.repo');
 const inscripcionRepo = require('../repos/inscripcion.repo');
-const estudianteRepo = require('../repos/estudiante.repo');
 const designacionRepo = require('../repos/designacion.repo');
-const {
-    ciclosLectivosDisponibles, crearEstudianteEnCurso, inscribirExistenteEnCurso, calcularEstudiantesDisponibles
-} = require('./estudiante.controller');
+const solicitudReubicacionRepo = require('../repos/solicitudReubicacion.repo');
+const { ciclosLectivosDisponibles, crearEstudianteEnCurso } = require('./estudiante.controller');
 const fechaHoy = require('../utils/fechaHoy');
 
 // "Mis cursos" - para nivelAcceso 'total' (jerarquicos/EMATP, ven todos los cursos de su
@@ -40,7 +38,11 @@ const getMisCursos = async (req, res) => {
         cursos = await Promise.all(clavesCursos.map((cursoId) => cursoRepo.obtenerPorId(cursoId)));
     }
 
-    res.render('pages/misCursos', { cargo, cursos, anioActual: anioActual() });
+    // Reubicaciones esperando confirmacion de cada curso (ver reubicacion.controller.js) -
+    // badge en el listado, para que no haga falta entrar curso por curso a buscarlas.
+    const pendientesPorCurso = await solicitudReubicacionRepo.contarPendientesPorCurso(cursos.map((c) => c._id));
+
+    res.render('pages/misCursos', { cargo, cursos, pendientesPorCurso, anioActual: anioActual() });
 };
 
 // Resuelve un curso solo si esta dentro de lo que puede ver el cargo activo (mismo
@@ -62,19 +64,14 @@ const getMisCursoDetalle = async (req, res) => {
     const curso = await resolverCursoPermitido(req, cargo);
     if (!curso) return res.redirect('/mis-cursos');
 
-    const [inscripcionesVigentes, todosLosEstudiantes, siguienteNumeroRegistro] = await Promise.all([
+    const [inscripcionesVigentes, siguienteNumeroRegistro, pendientesPorCurso] = await Promise.all([
         inscripcionRepo.obtenerVigentesPorCurso(curso._id),
-        estudianteRepo.obtenerTodos(),
-        inscripcionRepo.obtenerSiguienteNumeroRegistro(cargo.institucionId._id)
+        inscripcionRepo.obtenerSiguienteNumeroRegistro(cargo.institucionId._id),
+        solicitudReubicacionRepo.contarPendientesPorCurso([curso._id])
     ]);
 
-    // "anioActualInscripcion" para no chocar con la funcion anioActual() de mas arriba
-    // (año lectivo de CargoCurso, un concepto distinto).
-    const { estudiantesLibres, estudiantesEnOtroCurso, anioActual: anioActualInscripcion } =
-        await calcularEstudiantesDisponibles(inscripcionesVigentes, todosLosEstudiantes);
-
     res.render('pages/misCursoDetalle', {
-        curso, inscripcionesVigentes, estudiantesLibres, estudiantesEnOtroCurso, anioActual: anioActualInscripcion,
+        curso, inscripcionesVigentes, reubicacionesPendientes: pendientesPorCurso.get(String(curso._id)) || 0,
         ciclosLectivos: ciclosLectivosDisponibles(), fechaHoy: fechaHoy(), siguienteNumeroRegistro
     });
 };
@@ -122,23 +119,100 @@ const postEstudianteNuevo = async (req, res) => {
     res.redirect(`/mis-cursos/${curso.clave}`);
 };
 
-const postInscribirExistente = async (req, res) => {
+// Vista de edicion de la lista de inscriptos (desvincular, reubicar, reordenar) - separada
+// de misCursoDetalle a proposito (pedido explicito), solo las acciones sobre los ya
+// inscriptos. "Reubicar" no mueve directo: crea una solicitud que confirma el curso de
+// destino (ver reubicacion.controller.js::postSolicitarEnviar). Mismo guard que el
+// resto de la seccion (resolverCargoActivo + resolverCursoPermitido) - quien puede ver esta
+// pantalla es exactamente quien puede editarla, no hace falta un chequeo aparte.
+const getMisCursoEditar = async (req, res) => {
     const cargo = await resolverCargoActivo(req);
     if (!cargo) return res.redirect('/estudiantes');
     const curso = await resolverCursoPermitido(req, cargo);
     if (!curso) return res.redirect('/mis-cursos');
 
-    const resultado = await inscribirExistenteEnCurso(curso, req.body);
-    if (resultado.error) {
-        req.flash('error', resultado.error);
-        return res.redirect(`/mis-cursos/${curso.clave}`);
+    const [inscripcionesVigentes, cursosDeLaInstitucion] = await Promise.all([
+        inscripcionRepo.obtenerVigentesPorCurso(curso._id),
+        cursoRepo.obtenerPorInstitucion(cargo.institucionId._id)
+    ]);
+    const otrosCursos = cursosDeLaInstitucion.filter((c) => String(c._id) !== String(curso._id));
+
+    res.render('pages/misCursoEditar', {
+        curso, inscripcionesVigentes, otrosCursos, fechaHoy: fechaHoy()
+    });
+};
+
+// Confirma que la inscripcion sobre la que se quiere actuar sea realmente de ESTE curso -
+// nunca confiar en que el :inscripcionId de la URL alcance solo, sino un preceptor podria
+// mandar a mano el id de una inscripcion de otro curso ajeno.
+const resolverInscripcionDelCurso = async (curso, inscripcionId) => {
+    const inscripcion = await inscripcionRepo.obtenerPorId(inscripcionId);
+    if (!inscripcion || String(inscripcion.cursoId) !== String(curso._id)) return null;
+    return inscripcion;
+};
+
+const postDesvincularEstudiante = async (req, res) => {
+    const cargo = await resolverCargoActivo(req);
+    if (!cargo) return res.redirect('/estudiantes');
+    const curso = await resolverCursoPermitido(req, cargo);
+    if (!curso) return res.redirect('/mis-cursos');
+
+    const inscripcion = await resolverInscripcionDelCurso(curso, req.params.inscripcionId);
+    if (!inscripcion) {
+        req.flash('error', 'Esa inscripción no pertenece a este curso.');
+        return res.redirect(`/mis-cursos/${curso.clave}/editar`);
     }
-    req.flash('success', 'Estudiante inscripto.');
-    res.redirect(`/mis-cursos/${curso.clave}`);
+
+    const { fechaBaja, motivoBaja } = req.body;
+    await inscripcionRepo.darDeBaja(inscripcion._id, { fecha: new Date(fechaBaja), motivo: motivoBaja });
+    req.flash('success', 'Estudiante desvinculado del curso.');
+    res.redirect(`/mis-cursos/${curso.clave}/editar`);
+};
+
+// Formatea las dos inscripciones afectadas por un intercambio de N° de registro para la
+// respuesta AJAX (ver public/js/misCursoEditarOrden.js) - siempre en el orden
+// [actual (la que se clickeo), vecino], nunca el documento entero (alcanza con lo que el
+// cliente necesita para actualizar las dos filas).
+const formatearIntercambio = ([actual, vecino]) => [
+    { inscripcionId: String(actual._id), numeroRegistro: actual.numeroRegistro || '' },
+    { inscripcionId: String(vecino._id), numeroRegistro: vecino.numeroRegistro || '' }
+];
+
+// Subir/bajar en la vista de edicion son la unica excepcion de escritura por AJAX de esta
+// seccion (pedido explicito del usuario, para no refrescar toda la pagina en cada click) -
+// responden siempre JSON, nunca redirigen/flashean. Mismo guard que el resto (cargo activo
+// + curso permitido + la inscripcion tiene que ser de ESTE curso).
+const postSubirRegistro = async (req, res) => {
+    const cargo = await resolverCargoActivo(req);
+    if (!cargo) return res.status(403).json({ ok: false, error: 'No autorizado.' });
+    const curso = await resolverCursoPermitido(req, cargo);
+    if (!curso) return res.status(404).json({ ok: false, error: 'Curso no encontrado.' });
+
+    const inscripcion = await resolverInscripcionDelCurso(curso, req.params.inscripcionId);
+    if (!inscripcion) return res.status(404).json({ ok: false, error: 'Esa inscripción no pertenece a este curso.' });
+
+    const resultado = await inscripcionRepo.subirRegistro(curso._id, inscripcion._id);
+    if (!resultado) return res.json({ ok: true, cambio: false });
+    res.json({ ok: true, cambio: true, actualizadas: formatearIntercambio(resultado) });
+};
+
+const postBajarRegistro = async (req, res) => {
+    const cargo = await resolverCargoActivo(req);
+    if (!cargo) return res.status(403).json({ ok: false, error: 'No autorizado.' });
+    const curso = await resolverCursoPermitido(req, cargo);
+    if (!curso) return res.status(404).json({ ok: false, error: 'Curso no encontrado.' });
+
+    const inscripcion = await resolverInscripcionDelCurso(curso, req.params.inscripcionId);
+    if (!inscripcion) return res.status(404).json({ ok: false, error: 'Esa inscripción no pertenece a este curso.' });
+
+    const resultado = await inscripcionRepo.bajarRegistro(curso._id, inscripcion._id);
+    if (!resultado) return res.json({ ok: true, cambio: false });
+    res.json({ ok: true, cambio: true, actualizadas: formatearIntercambio(resultado) });
 };
 
 module.exports = {
-    getMisCursos, getMisCursoDetalle, getAsignaturasDocentes, postEstudianteNuevo, postInscribirExistente,
+    getMisCursos, getMisCursoDetalle, getAsignaturasDocentes, postEstudianteNuevo,
+    getMisCursoEditar, postDesvincularEstudiante, postSubirRegistro, postBajarRegistro,
     // Reusados por valoracion.controller.js (carga "por curso") - mismo guard exacto de
     // que curso puede ver/tocar un cargo con nivelAcceso 'total'/'preceptor'.
     resolverCargoActivo, resolverCursoPermitido

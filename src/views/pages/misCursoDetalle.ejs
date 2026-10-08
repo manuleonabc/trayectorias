@@ -46,7 +46,7 @@
             </div>
             <div class="collapse<%= mensajes.error ? ' show' : '' %>" id="formAltaEstudianteCurso">
                 <div class="card-body">
-                <form action="/mis-cursos/<%= curso.clave %>/estudiantes" method="POST">
+                <form id="formAltaEstudiante" action="/mis-cursos/<%= curso.clave %>/estudiantes" method="POST">
 
                     <h2 class="h6 fw-bold d-flex align-items-center gap-2 mb-3">
                         <i class="bi bi-person"></i> Datos personales
@@ -167,9 +167,26 @@
             </div>
             </div>
         </div>
+        <% if (reubicacionesPendientes > 0) { %>
+        <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span><i class="bi bi-arrow-left-right"></i> Hay <%= reubicacionesPendientes %> <%= reubicacionesPendientes === 1 ? 'reubicación esperando' : 'reubicaciones esperando' %> tu confirmación.</span>
+            <a href="/mis-cursos/<%= curso.clave %>/reubicaciones" class="btn btn-sm btn-outline-warning">Revisar</a>
+        </div>
+        <% } %>
         <!-- Estudiantes inscriptos -->
         <div class="card mb-4">
-            <div class="card-header">Estudiantes inscriptos (<%= inscripcionesVigentes.length %>)</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Estudiantes inscriptos (<%= inscripcionesVigentes.length %>)</span>
+                <div class="d-flex gap-2">
+                    <a href="/mis-cursos/<%= curso.clave %>/reubicaciones" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left-right"></i> Reubicaciones
+                        <% if (reubicacionesPendientes > 0) { %><span class="badge text-bg-warning ms-1"><%= reubicacionesPendientes %></span><% } %>
+                    </a>
+                    <a href="/mis-cursos/<%= curso.clave %>/editar" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                </div>
+            </div>
             <% if (inscripcionesVigentes.length === 0) { %>
             <div class="card-body p-0">
                 <p class="text-muted p-3 mb-0">Todavía no hay estudiantes inscriptos en este curso.</p>
@@ -213,142 +230,6 @@
             <% } %>
         </div>
 
-       
-
-        <!-- Inscribir a un estudiante que ya existe en el sistema. Separado en dos casos
-             (ver calcularEstudiantesDisponibles en estudiante.controller.js): "libres" (sin
-             inscripcion vigente este mismo año lectivo en ningun curso - el caso normal de
-             re-anotar a alguien que promociona) se anotan directo, sin pedir nada mas; los
-             que ya estan inscriptos en otro curso ESTE año se avisan explicitamente antes de
-             transferirlos, con el form completo. -->
-        <div class="card">
-            <div class="card-header">Inscribir estudiante existente</div>
-            <div class="card-body">
-                <% if (estudiantesLibres.length === 0 && estudiantesEnOtroCurso.length === 0) { %>
-                <p class="text-muted mb-0">No hay otros estudiantes cargados para inscribir acá.</p>
-                <% } %>
-
-                <% if (estudiantesLibres.length > 0) { %>
-                <form action="/mis-cursos/<%= curso.clave %>/estudiantes/existente" method="POST"
-                    class="row g-2 align-items-end <%= estudiantesEnOtroCurso.length > 0 ? 'mb-4 pb-4 border-bottom' : '' %>">
-                    <div class="col-12 col-md-6">
-                        <label class="form-label">Anotar estudiante <span class="text-secondary fw-normal">(sin inscripción este año)</span></label>
-                        <select name="estudianteId" class="form-select" required>
-                            <option value="">Seleccioná un estudiante</option>
-                            <% estudiantesLibres.forEach(function (estudiante) { %>
-                            <option value="<%= estudiante._id %>">
-                                <%= estudiante.personaId.apellido %>, <%= estudiante.personaId.nombre %>
-                                (<%= estudiante.personaId.numeroDocumento ? 'Doc. ' + estudiante.personaId.numeroDocumento : 'Legajo ' + estudiante.legajo %>)
-                            </option>
-                            <% }); %>
-                        </select>
-                    </div>
-                    <div class="col-8 col-md-4">
-                        <label class="form-label">N° de registro <span class="text-secondary fw-normal">(libro de matrícula)</span></label>
-                        <input type="text" name="numeroRegistro" class="form-control" value="<%= siguienteNumeroRegistro %>">
-                    </div>
-                    <div class="col-4 col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-check-lg"></i> Anotar
-                        </button>
-                    </div>
-                    <input type="hidden" name="cicloLectivo" value="<%= anioActual %>">
-                    <input type="hidden" name="fechaAlta" value="<%= fechaHoy %>">
-                    <input type="hidden" name="motivoAlta" value="Inscripción">
-                </form>
-                <% } %>
-
-                <% if (estudiantesEnOtroCurso.length > 0) { %>
-                <p class="fw-bold mb-2">Ya están inscriptos en otro curso este año</p>
-                <div class="table-responsive">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th>Estudiante</th>
-                            <th>Actualmente en</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% estudiantesEnOtroCurso.forEach(function (item) { %>
-                        <tr>
-                            <td><%= item.estudiante.personaId.apellido %>, <%= item.estudiante.personaId.nombre %></td>
-                            <td><%= item.vigente.cursoId.clave %> — <%= item.vigente.cursoId.institucionId.nombre %></td>
-                            <td class="text-end">
-                                <button type="button" class="btn btn-outline-warning btn-sm"
-                                    data-bs-toggle="modal" data-bs-target="#modalTransferir"
-                                    data-estudiante-id="<%= item.estudiante._id %>"
-                                    data-estudiante-nombre="<%= item.estudiante.personaId.apellido %>, <%= item.estudiante.personaId.nombre %>"
-                                    data-curso-actual="<%= item.vigente.cursoId.clave %> — <%= item.vigente.cursoId.institucionId.nombre %>">
-                                    Transferir
-                                </button>
-                            </td>
-                        </tr>
-                        <% }); %>
-                    </tbody>
-                </table>
-                </div>
-                <% } %>
-            </div>
-        </div>
-
-        <!-- Modal de transferencia: form completo (a diferencia del alta directa de arriba)
-             porque cierra una inscripcion vigente real en otro curso - amerita mas cuidado.
-             Las materias no tienen checklist propio aca: se anotan automaticamente segun el
-             plan del año, mismo default que si no se abriera el checklist en cualquier otro
-             lado. -->
-        <div class="modal fade" id="modalTransferir" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Transferir estudiante</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <form action="/mis-cursos/<%= curso.clave %>/estudiantes/existente" method="POST">
-                        <div class="modal-body">
-                            <input type="hidden" name="estudianteId" id="transferirEstudianteId">
-                            <p class="mb-3"><strong id="transferirEstudianteNombre"></strong></p>
-                            <div class="alert alert-warning py-2 px-3">
-                                Actualmente inscripto en <strong id="transferirCursoActual"></strong> - al confirmar, esa inscripción se cierra automáticamente con el mismo motivo y fecha.
-                            </div>
-                            <div class="row g-3">
-                                <div class="col-6">
-                                    <label class="form-label">Ciclo lectivo</label>
-                                    <select name="cicloLectivo" class="form-select" required>
-                                        <% ciclosLectivos.forEach(function (anio, i) { %>
-                                        <option value="<%= anio %>" <%= i === 0 ? 'selected' : '' %>><%= anio %></option>
-                                        <% }); %>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">Fecha de alta</label>
-                                    <input type="date" name="fechaAlta" class="form-control" value="<%= fechaHoy %>" required>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Motivo</label>
-                                    <input type="text" name="motivoAlta" class="form-control" value="Cambio de curso" required>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">N° de registro <span class="text-secondary fw-normal">(libro de matrícula)</span></label>
-                                    <input type="text" name="numeroRegistro" class="form-control" value="<%= siguienteNumeroRegistro %>">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Viene de <span class="text-secondary fw-normal">(opcional)</span></label>
-                                    <input type="text" name="procedencia" class="form-control" placeholder="Ej: Escuela N° 15, otra provincia">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-arrow-left-right"></i> Transferir
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
         <!-- Asignaturas y docentes: cargada por AJAX (ver /js/asignaturasDocentes.js), pero
              recien al apretar el boton - no se dispara sola al entrar a la pagina (pedido
              explicito). "Ver detalles" despliega titular/suplente/carga horaria inline, sin
@@ -369,6 +250,7 @@
     <script src="/js/telefonos.js"></script>
     <script src="/js/tipoDocumento.js"></script>
     <script src="/js/verificarDocumento.js"></script>
+    <script src="/js/verificarNombre.js"></script>
     <script src="/js/nacimiento.js"></script>
     <script src="/js/domicilio.js"></script>
     <script src="/js/tablaControl.js"></script>
@@ -392,6 +274,7 @@
 
             initTelefonos('#telefonosContainerNuevo', '#btnAgregarTelefonoNuevo');
             initTipoDocumento('#tipoDocumentoSelect', '#numeroDocumentoWrap', '#estadoDniWrap', '#documentoExtranjeroWrap');
+            initVerificarNombre('#formAltaEstudiante');
             initVerificarDocumento({
                 input: '#numeroDocumentoInput',
                 avisoWrap: '#numeroDocumentoAvisoWrap',
@@ -426,17 +309,6 @@
                 cicloLectivoSelector: '#cicloLectivoNuevo'
             });
 
-            // Modal de transferencia: se completa con los data-* del boton "Transferir" que
-            // lo abrio (uno solo, compartido por toda la tabla - ver estudiantesEnOtroCurso).
-            const modalTransferir = document.getElementById('modalTransferir');
-            if (modalTransferir) {
-                modalTransferir.addEventListener('show.bs.modal', function (evento) {
-                    const boton = evento.relatedTarget;
-                    document.getElementById('transferirEstudianteId').value = boton.dataset.estudianteId;
-                    document.getElementById('transferirEstudianteNombre').textContent = boton.dataset.estudianteNombre;
-                    document.getElementById('transferirCursoActual').textContent = boton.dataset.cursoActual;
-                });
-            }
         });
     </script>
 </body>

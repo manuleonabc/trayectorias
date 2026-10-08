@@ -168,7 +168,7 @@
             <div class="card-header">Agregar estudiante nuevo</div>
             <div class="collapse<%= mensajes.error ? ' show' : '' %>" id="formAltaEstudianteCurso">
             <div class="card-body">
-                <form action="/admin/instituciones/<%= curso.institucionId.clave %>/cursos/<%= curso.clave %>/estudiantes" method="POST">
+                <form id="formAltaEstudiante" action="/admin/instituciones/<%= curso.institucionId.clave %>/cursos/<%= curso.clave %>/estudiantes" method="POST">
 
                     <h2 class="h6 fw-bold d-flex align-items-center gap-2 mb-3">
                         <i class="bi bi-person"></i> Datos personales
@@ -429,6 +429,7 @@
     <script src="/js/telefonos.js"></script>
     <script src="/js/tipoDocumento.js"></script>
     <script src="/js/verificarDocumento.js"></script>
+    <script src="/js/verificarNombre.js"></script>
     <script src="/js/nacimiento.js"></script>
     <script src="/js/domicilio.js"></script>
     <script src="/js/tablaControl.js"></script>
@@ -445,6 +446,7 @@
 
             initTelefonos('#telefonosContainerNuevo', '#btnAgregarTelefonoNuevo');
             initTipoDocumento('#tipoDocumentoSelect', '#numeroDocumentoWrap', '#estadoDniWrap', '#documentoExtranjeroWrap');
+            initVerificarNombre('#formAltaEstudiante');
             initVerificarDocumento({
                 input: '#numeroDocumentoInput',
                 avisoWrap: '#numeroDocumentoAvisoWrap',

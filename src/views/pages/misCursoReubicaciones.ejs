@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trayectorias - Reubicaciones <%= curso.clave %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <%- include('../partials/msj') %>
+    <%- include('../partials/nav') %>
+
+    <%
+        const nombreEstudiante = (e) => e.personaId.apellido + ', ' + e.personaId.nombre;
+        const docEstudiante = (e) => e.personaId.numeroDocumento ? 'Doc. ' + e.personaId.numeroDocumento : 'Legajo ' + e.legajo;
+        const nombreCurso = (c, conEscuela) => c.clave + (conEscuela ? ' — ' + c.institucionId.nombre : '');
+        const fecha = (d) => d ? new Date(d).toLocaleDateString('es-AR', { timeZone: 'UTC' }) : '—';
+    %>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <h1 class="h3 fw-bold mb-0">
+                Reubicaciones
+                <span class="text-secondary fs-6 fw-normal d-block d-sm-inline">
+                    <%= curso.clave %> · <%= curso.institucionId.nombre %>
+                </span>
+            </h1>
+            <a href="/mis-cursos/<%= curso.clave %>" class="btn btn-outline-secondary btn-sm">Volver al curso</a>
+        </div>
+
+        <!-- Lo que otro curso pidio y le toca confirmar a ESTE (ver
+             reubicacion.controller.js::resolverSolicitudAConfirmar). -->
+        <% if (paraConfirmar.length > 0) { %>
+        <div class="card mb-4 border-warning">
+            <div class="card-header">Esperando tu confirmación (<%= paraConfirmar.length %>)</div>
+            <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Movimiento</th>
+                        <th>Fecha · Motivo</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% paraConfirmar.forEach(function (s) { %>
+                    <% const otraEscuela = entreEscuelas(s.cursoOrigenId, s.cursoDestinoId); %>
+                    <tr>
+                        <td>
+                            <%= nombreEstudiante(s.estudianteId) %>
+                            <div class="small text-secondary"><%= docEstudiante(s.estudianteId) %></div>
+                        </td>
+                        <td>
+                            <%= nombreCurso(s.cursoOrigenId, otraEscuela) %> <i class="bi bi-arrow-right"></i> <%= nombreCurso(s.cursoDestinoId, otraEscuela) %>
+                            <div class="small text-secondary">Pedido por <%= s.solicitadoPor || '—' %></div>
+                        </td>
+                        <td><%= fecha(s.fecha) %> · <%= s.motivo %></td>
+                        <td class="text-end">
+                            <% if (otraEscuela && !esJerarquico) { %>
+                            <span class="small text-secondary">Entre escuelas: la confirma un directivo</span>
+                            <% } else { %>
+                            <div class="d-flex gap-2 justify-content-end">
+                                <% if (s.sentido === 'enviar') { %>
+                                <!-- Viene a ESTE curso: el N° de registro es de este libro, se pide al confirmar. -->
+                                <button type="button" class="btn btn-success btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#modalConfirmar"
+                                    data-solicitud-id="<%= s._id %>" data-estudiante-nombre="<%= nombreEstudiante(s.estudianteId) %>">
+                                    <i class="bi bi-check-lg"></i> Confirmar
+                                </button>
+                                <% } else { %>
+                                <form action="/mis-cursos/<%= curso.clave %>/reubicaciones/<%= s._id %>/aprobar" method="POST">
+                                    <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Confirmar</button>
+                                </form>
+                                <% } %>
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#modalRechazar"
+                                    data-solicitud-id="<%= s._id %>" data-estudiante-nombre="<%= nombreEstudiante(s.estudianteId) %>">
+                                    Rechazar
+                                </button>
+                            </div>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Traer a este curso: buscador acotado (documento, legajo o apellido), nunca la
+             lista completa de estudiantes del sistema. -->
+        <div class="card mb-4">
+            <div class="card-header">Traer a un estudiante a este curso</div>
+            <div class="card-body">
+                <form method="GET" action="/mis-cursos/<%= curso.clave %>/reubicaciones" class="row g-2">
+                    <div class="col-8 col-md-6">
+                        <input type="search" name="q" class="form-control" value="<%= q %>" minlength="3"
+                            placeholder="Documento, legajo o apellido" required>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <button type="submit" class="btn btn-outline-secondary w-100"><i class="bi bi-search"></i> Buscar</button>
+                    </div>
+                </form>
+                <% if (q && resultados.length === 0) { %>
+                <p class="text-muted mt-3 mb-0">No se encontró ningún estudiante. Si es nuevo, cargalo desde "Agregar estudiante nuevo" en el curso.</p>
+                <% } %>
+            </div>
+            <% if (resultados.length > 0) { %>
+            <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Situación este año</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% resultados.forEach(function (r) { %>
+                    <tr>
+                        <td>
+                            <%= nombreEstudiante(r.estudiante) %>
+                            <div class="small text-secondary"><%= docEstudiante(r.estudiante) %></div>
+                        </td>
+                        <td>
+                            <% if (r.estado === 'libre') { %>
+                            <span class="text-secondary">Sin curso este año</span>
+                            <% } else if (r.estado === 'enEsteCurso') { %>
+                            <span class="badge text-bg-secondary">Ya está en este curso</span>
+                            <% } else if (r.estado === 'otroCurso') { %>
+                            En <%= r.vigente.cursoId.clave %>
+                            <% } else if (esJerarquico) { %>
+                            En <%= nombreCurso(r.vigente.cursoId, true) %>
+                            <% } else { %>
+                            <span class="text-secondary">Inscripto en otra escuela</span>
+                            <% } %>
+                        </td>
+                        <td class="text-end">
+                            <% if (r.estado === 'enEsteCurso') { %>
+                            <% } else if (r.tienePendiente) { %>
+                            <span class="small text-secondary">Ya tiene una solicitud pendiente</span>
+                            <% } else if (r.estado === 'libre') { %>
+                            <!-- Sin curso este año: no hay otro lado que confirme, se anota directo. -->
+                            <form action="/mis-cursos/<%= curso.clave %>/reubicaciones/anotar" method="POST"
+                                class="d-flex gap-2 justify-content-end align-items-center">
+                                <input type="hidden" name="estudianteId" value="<%= r.estudiante._id %>">
+                                <input type="hidden" name="q" value="<%= q %>">
+                                <input type="text" name="numeroRegistro" class="form-control form-control-sm" style="max-width: 90px;"
+                                    value="<%= siguienteNumeroRegistro %>" title="N° de registro (libro de matrícula)" aria-label="N° de registro">
+                                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg"></i> Anotar</button>
+                            </form>
+                            <% } else if (r.estado === 'otraEscuela' && !esJerarquico) { %>
+                            <span class="small text-secondary">El pase entre escuelas lo pide un directivo</span>
+                            <% } else { %>
+                            <button type="button" class="btn btn-outline-warning btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#modalTraer"
+                                data-estudiante-id="<%= r.estudiante._id %>"
+                                data-estudiante-nombre="<%= nombreEstudiante(r.estudiante) %>"
+                                data-curso-actual="<%= nombreCurso(r.vigente.cursoId, r.estado === 'otraEscuela') %>">
+                                <i class="bi bi-arrow-left-right"></i> Pedir pase
+                            </button>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Enviar a otro curso de esta escuela: lo confirma el curso de destino. -->
+        <div class="card mb-4">
+            <div class="card-header">Enviar a un estudiante de este curso a otro curso</div>
+            <div class="card-body">
+                <% if (inscripcionesVigentes.length === 0 || otrosCursos.length === 0) { %>
+                <p class="text-muted mb-0">
+                    <%= inscripcionesVigentes.length === 0 ? 'Este curso no tiene estudiantes inscriptos.' : 'No hay otros cursos en esta escuela.' %>
+                </p>
+                <% } else { %>
+                <form action="/mis-cursos/<%= curso.clave %>/reubicaciones/enviar" method="POST" class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Estudiante</label>
+                        <select name="inscripcionId" class="form-select" required>
+                            <option value="">Seleccioná un estudiante</option>
+                            <% inscripcionesVigentes.forEach(function (i) { %>
+                            <option value="<%= i._id %>"><%= nombreEstudiante(i.estudianteId) %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Curso de destino</label>
+                        <select name="cursoDestinoId" class="form-select" required>
+                            <option value="">Seleccioná un curso</option>
+                            <% otrosCursos.forEach(function (c) { %>
+                            <option value="<%= c._id %>"><%= c.clave %> — <%= c.anioId.nombre %> "<%= c.division %>"</option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Fecha</label>
+                        <input type="date" name="fecha" class="form-control" value="<%= fechaHoy %>" required>
+                    </div>
+                    <div class="col-6 col-md-6">
+                        <label class="form-label">Motivo</label>
+                        <input type="text" name="motivo" class="form-control" value="Cambio de curso" required>
+                    </div>
+                    <div class="col-12 col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-send"></i> Pedir</button>
+                    </div>
+                </form>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Lo que pidio ESTE curso: pendientes (cancelables) + las ultimas resueltas. -->
+        <div class="card">
+            <div class="card-header">Solicitudes de este curso</div>
+            <% if (enviadas.length === 0) { %>
+            <div class="card-body"><p class="text-muted mb-0">Todavía no se pidió ninguna reubicación desde este curso.</p></div>
+            <% } else { %>
+            <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Movimiento</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% const badges = { pendiente: 'text-bg-warning', aprobada: 'text-bg-success', rechazada: 'text-bg-danger', cancelada: 'text-bg-secondary' }; %>
+                    <% enviadas.forEach(function (s) { %>
+                    <% const otraEscuela = entreEscuelas(s.cursoOrigenId, s.cursoDestinoId); %>
+                    <tr>
+                        <td><%= nombreEstudiante(s.estudianteId) %></td>
+                        <td>
+                            <%= nombreCurso(s.cursoOrigenId, otraEscuela) %> <i class="bi bi-arrow-right"></i> <%= nombreCurso(s.cursoDestinoId, otraEscuela) %>
+                            <div class="small text-secondary"><%= fecha(s.fecha) %> · <%= s.motivo %></div>
+                        </td>
+                        <td>
+                            <span class="badge <%= badges[s.estado] %>"><%= s.estado %></span>
+                            <% if (s.estado === 'rechazada' && s.motivoRechazo) { %>
+                            <div class="small text-secondary"><%= s.motivoRechazo %></div>
+                            <% } %>
+                        </td>
+                        <td class="text-end">
+                            <% if (s.estado === 'pendiente') { %>
+                            <form action="/mis-cursos/<%= curso.clave %>/reubicaciones/<%= s._id %>/cancelar" method="POST">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+                            </form>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            </div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Modales compartidos: se completan con los data-* del boton que los abrio. -->
+    <div class="modal fade" id="modalTraer" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Pedir pase a <%= curso.clave %></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/mis-cursos/<%= curso.clave %>/reubicaciones/traer" method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="estudianteId" id="traerEstudianteId">
+                        <input type="hidden" name="q" value="<%= q %>">
+                        <p class="mb-3"><strong id="traerEstudianteNombre"></strong></p>
+                        <div class="alert alert-warning py-2 px-3">
+                            Hoy está en <strong id="traerCursoActual"></strong>. El pase se hace cuando ese curso lo confirme.
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label">Fecha</label>
+                                <input type="date" name="fecha" class="form-control" value="<%= fechaHoy %>" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">N° de registro</label>
+                                <input type="text" name="numeroRegistro" class="form-control" value="<%= siguienteNumeroRegistro %>">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Motivo</label>
+                                <input type="text" name="motivo" class="form-control" value="Cambio de curso" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i> Pedir pase</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalConfirmar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar ingreso a <%= curso.clave %></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formConfirmar" method="POST">
+                    <div class="modal-body">
+                        <p class="mb-3"><strong id="confirmarEstudianteNombre"></strong> pasa a este curso.</p>
+                        <label class="form-label">N° de registro <span class="text-secondary fw-normal">(libro de matrícula)</span></label>
+                        <input type="text" name="numeroRegistro" class="form-control" value="<%= siguienteNumeroRegistro %>">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Confirmar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalRechazar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rechazar solicitud</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formRechazar" method="POST">
+                    <div class="modal-body">
+                        <p class="mb-3"><strong id="rechazarEstudianteNombre"></strong> se queda donde está.</p>
+                        <label class="form-label">Motivo <span class="text-secondary fw-normal">(opcional)</span></label>
+                        <input type="text" name="motivoRechazo" class="form-control" placeholder="Ej: no corresponde a este curso">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Rechazar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.auto-close').forEach(function (alerta) {
+                setTimeout(function () { new bootstrap.Alert(alerta).close(); }, 5000);
+            });
+
+            const base = '/mis-cursos/<%= curso.clave %>/reubicaciones/';
+            function alAbrir(modalId, completar) {
+                const modal = document.getElementById(modalId);
+                modal.addEventListener('show.bs.modal', function (evento) { completar(evento.relatedTarget.dataset); });
+            }
+            alAbrir('modalTraer', function (d) {
+                document.getElementById('traerEstudianteId').value = d.estudianteId;
+                document.getElementById('traerEstudianteNombre').textContent = d.estudianteNombre;
+                document.getElementById('traerCursoActual').textContent = d.cursoActual;
+            });
+            alAbrir('modalConfirmar', function (d) {
+                document.getElementById('confirmarEstudianteNombre').textContent = d.estudianteNombre;
+                document.getElementById('formConfirmar').action = base + d.solicitudId + '/aprobar';
+            });
+            alAbrir('modalRechazar', function (d) {
+                document.getElementById('rechazarEstudianteNombre').textContent = d.estudianteNombre;
+                document.getElementById('formRechazar').action = base + d.solicitudId + '/rechazar';
+            });
+        });
+    </script>
+</body>
+</html>
