@@ -64,6 +64,47 @@
             </div>
         </div>
 
+        <!-- Docente que todavia no se dio de alta con Google: se carga provisorio para poder
+             designarlo ya (ver Persona.provisoria). Se vincula con su cuenta por DNI cuando
+             hace el alta. -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>¿El docente no aparece en la lista?</span>
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#formDocenteProvisorio">
+                    + Cargar docente provisorio
+                </button>
+            </div>
+            <div class="collapse" id="formDocenteProvisorio">
+                <div class="card-body">
+                    <p class="text-secondary small">
+                        Si todavía no se dio de alta en el sistema, cargalo acá para poder designarlo.
+                        Cuando haga su alta con su cuenta @abc.gob.ar usando el mismo DNI, conserva estas designaciones.
+                    </p>
+                    <form action="<%= urlCargo %>/docentes-provisorios" method="POST" class="row g-3">
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <label class="form-label">Apellido</label>
+                            <input type="text" name="apellido" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" name="nombre" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-2">
+                            <label class="form-label">DNI</label>
+                            <input type="text" name="numeroDocumento" class="form-control" inputmode="numeric" required>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <label class="form-label">CUIL <span class="text-secondary small">(opcional)</span></label>
+                            <input type="text" name="cuil" class="form-control">
+                        </div>
+                        <div class="col-12 col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Cargar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Alta como titular/provisional/interino: solo si el cargo esta vacante -->
         <% if (!activa) { %>
         <div class="card mb-4">
@@ -75,7 +116,7 @@
                         <select name="personaId" class="form-select" required>
                             <option value="">Seleccioná una persona</option>
                             <% personas.forEach(function (persona) { %>
-                            <option value="<%= persona._id %>"><%= persona.apellido %>, <%= persona.nombre %></option>
+                            <option value="<%= persona._id %>"><%= persona.apellido %>, <%= persona.nombre %><% if (persona.provisoria) { %> (provisorio)<% } %></option>
                             <% }); %>
                         </select>
                     </div>
@@ -169,7 +210,7 @@
                         <select name="personaId" class="form-select" required>
                             <option value="">Seleccioná una persona</option>
                             <% personas.forEach(function (persona) { %>
-                            <option value="<%= persona._id %>"><%= persona.apellido %>, <%= persona.nombre %></option>
+                            <option value="<%= persona._id %>"><%= persona.apellido %>, <%= persona.nombre %><% if (persona.provisoria) { %> (provisorio)<% } %></option>
                             <% }); %>
                         </select>
                     </div>

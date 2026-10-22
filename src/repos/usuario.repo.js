@@ -45,13 +45,20 @@ class UsuarioRepo {
         return await Usuario.findByIdAndUpdate(id, { estado }, { new: true });
     }
 
-    // Solo las Persona que tienen su propia cuenta de Usuario (agentes con mail
-    // @abc.gob.ar) - Persona es un modelo compartido con Estudiante, que NUNCA tiene
-    // Usuario propio, asi que un Persona.find({}) sin filtrar tambien trae estudiantes.
+    // Las Persona que se pueden designar en un Cargo: las que tienen su propia cuenta de
+    // Usuario (agentes con mail @abc.gob.ar) mas los docentes provisorios cargados desde
+    // gestion que todavia no se dieron de alta (ver Persona.provisoria). Persona es un
+    // modelo compartido con Estudiante, que NUNCA tiene Usuario propio, asi que un
+    // Persona.find({}) sin filtrar tambien trae estudiantes.
     // Usado para el selector de "Designar" de un Cargo (ver admin/cargo.controller.js).
-    async obtenerPersonasConCuenta() {
+    async obtenerPersonasDesignables() {
         const entidadIds = await Usuario.find({ tipoModel: 'Persona' }).distinct('entidadId');
-        return await Persona.find({ _id: { $in: entidadIds } }).sort({ apellido: 1 });
+        return await Persona.find({ $or: [{ _id: { $in: entidadIds } }, { provisoria: true }] })
+            .sort({ apellido: 1, nombre: 1 });
+    }
+
+    async personaTieneCuenta(personaId) {
+        return await Usuario.exists({ tipoModel: 'Persona', entidadId: personaId });
     }
 }
 

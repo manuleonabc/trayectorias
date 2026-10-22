@@ -67,7 +67,13 @@ const PersonaSchema = new mongoose.Schema({
     telefonos: [{
         descripcion: { type: String, set: aMayusculas, trim: true },
         numero: { type: String, required: true, trim: true }
-    }]
+    }],
+    // Docente cargado a mano desde la ficha de un Cargo (gestion) para poder designarlo
+    // antes de que haga su propia alta con Google - todavia no tiene Usuario. Cuando se
+    // da de alta en /alta con el mismo DNI, personaService reusa esta Persona (con sus
+    // designaciones ya hechas) y le saca la marca. Sin default a proposito: los
+    // documentos ya existentes (estudiantes, agentes con cuenta) no lo necesitan.
+    provisoria: { type: Boolean }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Persona', PersonaSchema);

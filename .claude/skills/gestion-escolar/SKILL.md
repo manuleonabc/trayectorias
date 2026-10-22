@@ -1026,6 +1026,17 @@ Otro JS reusable, mismo criterio (vanilla, sin libreria):
     `altaSuplente({ cargoId, personaId, fechaAlta, licenciaId, licencia })`
     son los dos puntos de entrada para crear una designacion — reusados
     tal cual por `SolicitudCargo` al aprobar (ver arriba).
+  - **Docente provisorio** (pedido explicito, para poder armar la planta
+    sin esperar a que cada docente haga su alta): desde la ficha de un
+    `Cargo` ("+ Cargar docente provisorio", `POST .../docentes-provisorios`)
+    se crea una `Persona` con `provisoria: true` (apellido, nombre, DNI,
+    CUIL opcional), **sin `Usuario`**. El selector de "Designar"
+    (`usuarioRepo.obtenerPersonasDesignables`) lista las Persona con cuenta
+    **o** provisorias, y `postDesignacionBase`/`postSuplente` revalidan eso
+    server-side (`resolverPersonaDesignable`). Al hacer el alta en
+    `/alta/agente` con el mismo DNI (normalizado a solo digitos),
+    `personaService.postPersona` **reusa esa Persona** (completa datos y le
+    saca la marca) en vez de crear otra — asi conserva sus designaciones.
 - **CargoCurso** ([src/models/CargoCurso.js](../../../src/models/CargoCurso.js) +
   [src/repos/cargoCurso.repo.js](../../../src/repos/cargoCurso.repo.js)):
   que `Curso`(s) tiene a cargo un `Cargo` de **preceptor/ematp**, por

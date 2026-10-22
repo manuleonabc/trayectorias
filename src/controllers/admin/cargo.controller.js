@@ -92,6 +92,17 @@ const resolverCargo = async (req) => {
 
 const urlCargo = (req) => `/admin/instituciones/${req.params.institucionClave}/cargos/${req.params.cargoClave}`;
 
+// Solo se designa a quien tiene cuenta propia o fue cargado como docente provisorio
+// (ver Persona.provisoria) - nunca a un estudiante, aunque llegue su id en el body.
+const resolverPersonaDesignable = async (personaId) => {
+    const persona = await Persona.findById(personaId).catch(() => null);
+    if (!persona) throw new Error('La persona elegida no existe.');
+    if (!persona.provisoria && !(await usuarioRepo.personaTieneCuenta(persona._id))) {
+        throw new Error('La persona elegida no es un docente que se pueda designar.');
+    }
+    return persona;
+};
+
 const getCargoDetalle = async (req, res) => {
     const cargo = await resolverCargo(req);
     if (!cargo) return res.redirect('/admin/cargos');
@@ -99,7 +110,7 @@ const getCargoDetalle = async (req, res) => {
     const [{ base, suplentesVigentes }, historial, personas, cursosDelCargo, cursosDeLaInstitucion, solicitudesPendientes] = await Promise.all([
         designacionRepo.obtenerCadenaPorCargo(cargo._id),
         designacionRepo.obtenerHistorialPorCargo(cargo._id),
-        usuarioRepo.obtenerPersonasConCuenta(),
+        usuarioRepo.obtenerPersonasDesignables(),
         cargoCursoRepo.obtenerPorCargo(cargo._id),
         cursoRepo.obtenerPorInstitucion(cargo.institucionId._id),
         solicitudCargoRepo.obtenerPendientesPorCargo(cargo._id)
@@ -129,6 +140,7 @@ const postDesignacionBase = async (req, res) => {
 
     const { personaId, situacionRevista, fechaAlta } = req.body;
     try {
+        const persona = await resolverPersonaDesignable(personaId);
         await designacionRepo.altaBase({
             cargoId: cargo._id,
             personaId,
@@ -140,7 +152,6 @@ const postDesignacionBase = async (req, res) => {
         // ellas (fue directo desde este form).
         await solicitudCargoRepo.rechazarPendientesDelCargo(cargo._id, 'El cargo fue cubierto por otra vía.');
 
-        const persona = await Persona.findById(personaId);
         await auditoriaRepo.registrar({
             accion: 'alta_designacion',
             descripcion: `${persona.apellido}, ${persona.nombre} — ${cargo.clave} (${situacionRevista})`,
@@ -160,6 +171,7 @@ const postSuplente = async (req, res) => {
 
     const { personaId, fechaAlta, licenciaId, motivoLicencia, fechaInicioLicencia } = req.body;
     try {
+        const persona = await resolverPersonaDesignable(personaId);
         await designacionRepo.altaSuplente({
             cargoId: cargo._id,
             personaId,
@@ -168,7 +180,6 @@ const postSuplente = async (req, res) => {
             licencia: { motivo: motivoLicencia, fechaInicio: fechaInicioLicencia ? new Date(fechaInicioLicencia) : undefined }
         });
 
-        const persona = await Persona.findById(personaId);
         await auditoriaRepo.registrar({
             accion: 'alta_designacion',
             descripcion: `${persona.apellido}, ${persona.nombre} — suplente en ${cargo.clave}`,
@@ -178,6 +189,41 @@ const postSuplente = async (req, res) => {
         req.flash('success', 'Suplente designado.');
     } catch (error) {
         req.flash('error', error.message);
+    }
+    res.redirect(urlCargo(req));
+};
+
+// Docente que todavia no hizo su alta con Google: se carga con lo minimo (apellido,
+// nombre, DNI) para poder designarlo ya y organizar la planta. El DNI es lo que despues
+// lo vincula con su cuenta cuando se da de alta (ver personaService.postPersona).
+const postDocenteProvisorio = async (req, res) => {
+    const cargo = await resolverCargo(req);
+    if (!cargo) return res.redirect('/admin/cargos');
+
+    const apellido = (req.body.apellido || '').trim();
+    const nombre = (req.body.nombre || '').trim();
+    const numeroDocumento = String(req.body.numeroDocumento || '').replace(/\D/g, '');
+    const cuil = String(req.body.cuil || '').trim() || undefined;
+
+    if (!apellido || !nombre || !numeroDocumento) {
+        req.flash('error', 'Apellido, nombre y DNI son obligatorios para cargar un docente provisorio.');
+        return res.redirect(urlCargo(req));
+    }
+
+    const existente = await Persona.findOne({ numeroDocumento });
+    if (existente) {
+        const designable = existente.provisoria || await usuarioRepo.personaTieneCuenta(existente._id);
+        req.flash(designable ? 'warning' : 'error', designable
+            ? `Ya existe ${existente.apellido}, ${existente.nombre} con ese DNI — elegilo en la lista para designarlo.`
+            : 'Ya existe una persona con ese DNI que no es docente (por ejemplo, un estudiante). Revisá el número.');
+        return res.redirect(urlCargo(req));
+    }
+
+    try {
+        await Persona.create({ apellido, nombre, numeroDocumento, cuil, provisoria: true });
+        req.flash('success', `${apellido}, ${nombre} cargado como docente provisorio. Ya lo podés designar.`);
+    } catch (error) {
+        req.flash('error', error.code === 11000 ? 'Ya existe una persona con ese CUIL.' : error.message);
     }
     res.redirect(urlCargo(req));
 };
@@ -231,5 +277,5 @@ const postQuitarCursoCargo = async (req, res) => {
 
 module.exports = {
     getCargos, postCargo, getEditarCargo, postEditarCargo, getCargoDetalle, postDesignacionBase,
-    postSuplente, postBaja, postCursoCargo, postQuitarCursoCargo
+    postSuplente, postDocenteProvisorio, postBaja, postCursoCargo, postQuitarCursoCargo
 };
